@@ -1,2195 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Enhanced 3D Cloth Simulation – Educational Edition</title>
-    <!-- p5.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.min.js"></script>
-    <style>
-      /* Global Layout & Colours */
-      body, html {
-        margin: 0;
-        padding: 0;
-        background: #0b0e14;
-        color: #edf2f7;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        height: 100%;
-        overflow: hidden;
-      }
-      #uiPanel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 280px;
-        height: 100%;
-        background: #1a202c;
-        box-shadow: 2px 0 8px rgba(0,0,0,0.5);
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: #4a5568 #1a202c;
-        z-index: 10;
-        transition: transform 0.3s ease;
-      }
-      #uiPanel::-webkit-scrollbar {
-        width: 8px;
-      }
-      #uiPanel::-webkit-scrollbar-track {
-        background: #1a202c;
-      }
-      #uiPanel::-webkit-scrollbar-thumb {
-        background-color: #4a5568;
-        border-radius: 4px;
-      }
-      #canvasContainer {
-        position: absolute;
-        top: 0;
-        left: 280px;
-        width: calc(100% - 280px);
-        height: 100%;
-        overflow: hidden;
-        transition: left 0.3s ease, width 0.3s ease;
-      }
-      #menuToggle {
-        display: none;
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 100;
-        padding: 8px 12px;
-        background: #2d3748;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      h2 {
-        margin-top: 0;
-        margin-bottom: 16px;
-        color: #63b3ed;
-        font-weight: 600;
-        font-size: 1.5rem;
-      }
-      h3 {
-        color: #63b3ed;
-        font-weight: 600;
-        font-size: 1.2rem;
-        margin-top: 1rem;
-        margin-bottom: 0.75rem;
-      }
-      p, label {
-        font-size: 14px;
-        line-height: 1.5;
-        margin-bottom: 12px;
-        color: #e2e8f0;
-      }
-      .parameter {
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #2d3748;
-      }
-      .paramHeader {
-        margin-bottom: 6px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        color: #a0aec0;
-      }
-      .paramRadio {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 6px;
-      }
-      .paramRadio input[type="radio"] {
-        accent-color: #4299e1;
-      }
-      input[type="range"] {
-        width: 100%;
-        accent-color: #4299e1;
-        margin: 8px 0;
-      }
-      .paramContainer {
-        margin-top: 6px;
-        display: none; /* Hidden until "on" is selected */
-      }
-      .paramDesc {
-        font-size: 12px;
-        color: #a0aec0;
-        margin-top: 6px;
-        line-height: 1.4;
-      }
-      /* Sticky bottom buttons */
-      .bottomButtons {
-        position: sticky;
-        bottom: 20px;
-        width: 100%;
-      }
-      button {
-        width: 100%;
-        padding: 10px 14px;
-        background: #2d3748;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-bottom: 10px;
-        font-size: 14px;
-        transition: all 0.2s ease;
-      }
-      button:hover {
-        background: #4a5568;
-      }
-      button:active {
-        transform: translateY(1px);
-      }
-      button:disabled {
-        background: #2d3748;
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      
-      /* Educational overlays */
-      #overlayContainer {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 340px;
-        background: rgba(26, 32, 44, 0.95);
-        color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        display: none;
-        max-height: 80%;
-        overflow-y: auto;
-        z-index: 100;
-        backdrop-filter: blur(4px);
-        border: 1px solid #4a5568;
-      }
-      
-      /* Physics Metrics panel */
-      #physicsMetrics {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        width: 300px;
-        background: rgba(26, 32, 44, 0.95);
-        color: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        z-index: 90;
-        backdrop-filter: blur(4px);
-        border: 1px solid #4a5568;
-      }
-      
-      /* Time-lapse overlay */
-      #timelapseOverlay {
-        z-index: 100;
-        backdrop-filter: blur(4px);
-        border: 1px solid #4a5568;
-      }
-      
-      /* Comparison overlay */
-      #comparisonOverlay {
-        z-index: 100;
-        width: 600px;
-        max-width: 80%;
-        backdrop-filter: blur(4px);
-        border: 1px solid #4a5568;
-      }
-      
-      /* Info icons */
-      .infoIcon {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        width: 16px;
-        height: 16px;
-        margin-left: 8px;
-        border-radius: 50%;
-        background: #4299e1;
-        color: white;
-        font-size: 11px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      .infoIcon:hover {
-        background: #2b6cb0;
-      }
-      
-      /* Tutorial panel */
-      #learningPanel {
-        z-index: 100;
-        backdrop-filter: blur(4px);
-        border: 1px solid #4a5568;
-      }
-      #learningPanel select,
-      #learningPanel button {
-        margin: 10px 0;
-      }
-      #stepTitle {
-        color: #63b3ed;
-      }
-      #stepExplanation {
-        font-size: 14px;
-        line-height: 1.6;
-      }
-      
-      /* Section headers */
-      .sectionTitle {
-        margin-top: 20px;
-        font-weight: 600;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #4299e1;
-        color: #63b3ed;
-      }
-      
-      /* Dropdown styling */
-      select {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 4px;
-        background: #2d3748;
-        color: white;
-        border: 1px solid #4a5568;
-        cursor: pointer;
-      }
-      
-      /* Tooltip */
-      .tooltip {
-        position: absolute;
-        background: rgba(26, 32, 44, 0.95);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        z-index: 1000;
-        max-width: 200px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.2s;
-      }
-      
-      /* Diagram images in educational overlays */
-      .diagram {
-        width: 100%;
-        border-radius: 4px;
-        margin: 10px 0;
-        background: #2d3748;
-        padding: 10px;
-        box-sizing: border-box;
-      }
-      
-      /* Formula styling */
-      .formula {
-        font-family: monospace;
-        background: #2d3748;
-        padding: 8px 12px;
-        border-radius: 4px;
-        display: inline-block;
-        margin: 6px 0;
-      }
-      
-      /* Tab navigation for different parameter groups */
-      .tabs {
-        display: flex;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #4a5568;
-      }
-      .tab {
-        padding: 8px 12px;
-        cursor: pointer;
-        background: transparent;
-        border: none;
-        color: #a0aec0;
-        font-size: 14px;
-        margin-right: 2px;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s ease;
-        width: auto;
-        margin-bottom: 0;
-      }
-      .tab.active {
-        color: #63b3ed;
-        border-bottom: 2px solid #4299e1;
-      }
-      .tab:hover:not(.active) {
-        color: #e2e8f0;
-        background: transparent;
-      }
-      .tabContent {
-        display: none;
-      }
-      .tabContent.active {
-        display: block;
-      }
-      
-      /* Material preset cards */
-      .materialPresets {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 10px;
-      }
-      .materialCard {
-        width: calc(50% - 5px);
-        background: #2d3748;
-        border-radius: 4px;
-        padding: 10px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      .materialCard:hover {
-        background: #4a5568;
-      }
-      .materialCard.active {
-        border: 1px solid #4299e1;
-        background: #2b6cb0;
-      }
-      .materialName {
-        font-weight: bold;
-        margin-bottom: 4px;
-      }
-      .materialDesc {
-        font-size: 11px;
-        color: #a0aec0;
-      }
-      
-      /* Slider value label */
-      .sliderValue {
-        float: right;
-        font-weight: normal;
-      }
-      
-      /* Animation controls */
-      .animControls {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      .animBtn {
-        flex: 1;
-        padding: 8px 4px;
-        font-size: 12px;
-      }
-      
-      /* Logo and credits */
-      .appHeader {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-      .appLogo {
-        width: 40px;
-        height: 40px;
-        background: #4299e1;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-        color: white;
-        font-weight: bold;
-        font-size: 18px;
-      }
-      .appTitle {
-        flex: 1;
-      }
-      .appTitle h2 {
-        margin: 0;
-        line-height: 1.2;
-      }
-      .appVersion {
-        font-size: 11px;
-        color: #a0aec0;
-      }
-      
-      /* Loading indicator */
-      #loadingOverlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(26, 32, 44, 0.9);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      }
-      .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #4299e1;
-        border-radius: 50%;
-        border-top-color: transparent;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-      
-      /* Performance indicator */
-      #performanceIndicator {
-        position: absolute;
-        top: 10px;
-        left: 290px;
-        background: rgba(26, 32, 44, 0.7);
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        color: white;
-        display: none;
-      }
-      
-      /* Responsive layout */
-      @media (max-width: 768px) {
-        #menuToggle {
-          display: block;
-        }
-        #uiPanel {
-          transform: translateX(-100%);
-          width: 250px;
-        }
-        #uiPanel.active {
-          transform: translateX(0);
-        }
-        #canvasContainer {
-          left: 0;
-          width: 100%;
-        }
-        #overlayContainer,
-        #physicsMetrics,
-        #learningPanel,
-        #comparisonOverlay,
-        #timelapseOverlay {
-          width: 90%;
-          max-width: 90%;
-          left: 5%;
-          right: 5%;
-        }
-      }
-      
-      /* Error message */
-      #errorMessage {
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #e53e3e;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 4px;
-        z-index: 1001;
-        display: none;
-        max-width: 80%;
-        text-align: center;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay">
-      <div class="spinner"></div>
-      <p>Loading Cloth Simulator...</p>
-    </div>
-    
-    <!-- Error Message -->
-    <div id="errorMessage"></div>
-    
-    <!-- Performance Indicator -->
-    <div id="performanceIndicator"></div>
-    
-    <!-- Mobile Menu Toggle -->
-    <button id="menuToggle">☰ Menu</button>
-    
-    <!-- UI Panel -->
-    <div id="uiPanel">
-      <div class="appHeader">
-        <div class="appLogo">CS</div>
-        <div class="appTitle">
-          <h2>3D Cloth Simulator</h2>
-          <div class="appVersion">Educational Edition v1.1</div>
-        </div>
-      </div>
-
-      <!-- Tabs for organizing controls -->
-      <div class="tabs">
-        <button class="tab active" onclick="showTab('simTab')">Simulation</button>
-        <button class="tab" onclick="showTab('matTab')">Materials</button>
-        <button class="tab" onclick="showTab('forceTab')">Forces</button>
-        <button class="tab" onclick="showTab('learnTab')">Learning</button>
-      </div>
-
-      <!-- Simulation Tab -->
-      <div id="simTab" class="tabContent active">
-        <p>
-          Two main simulation modes: <strong>Plane</strong> or <strong>Draped</strong>.<br>
-          Adjust parameters to see how they affect cloth behavior.
-        </p>
-
-        <!-- Simulation Mode -->
-        <div class="parameter">
-          <div class="paramHeader">Simulation Mode:</div>
-          <div id="simModeRadio"></div>
-          <div class="paramDesc">
-            <strong>Plane</strong>: pinned cloth in free space.<br>
-            <strong>Draped</strong>: cloth drapes over a form.
-          </div>
-        </div>
-
-        <!-- Form Mode (only relevant in Draped mode) -->
-        <div class="parameter" id="formModeParam">
-          <div class="paramHeader">Form Mode:</div>
-          <div id="formModeRadio"></div>
-          <div class="paramDesc">
-            Choose <strong>Sphere</strong> or <strong>Cylinder</strong> as the underlying form.
-          </div>
-        </div>
-
-        <!-- Interaction Mode -->
-        <div class="parameter">
-          <div class="paramHeader">Interaction Mode:</div>
-          <div id="interactionRadioGroup"></div>
-          <div class="paramDesc">
-            "Rotate" = move the camera; "Drag" = pick cloth points.
-          </div>
-        </div>
-
-        <!-- Pinning Mode (only for Plane mode) -->
-        <div class="parameter">
-          <div class="paramHeader">Pinning Mode:</div>
-          <div id="pinningRadio"></div>
-          <div class="paramDesc">Only relevant in Plane mode.</div>
-        </div>
-
-        <!-- Shading Mode -->
-        <div class="parameter">
-          <div class="paramHeader">Visualization Mode:</div>
-          <div class="paramRadio" id="shadingRadioGroup"></div>
-          <div class="paramDesc">
-            <strong>Off:</strong> Lines only<br>
-            <strong>Cloth:</strong> Solid surface<br>
-            <strong>Overlaid:</strong> Surface with structure<br>
-            <strong>Stress:</strong> Tension/compression<br>
-            <strong>Structure:</strong> Constraint types
-          </div>
-        </div>
-
-        <!-- Cloth Resolution -->
-        <div class="parameter">
-          <div class="paramHeader">Cloth Resolution: <span id="resolutionVal"></span></div>
-          <div id="resolutionSlider"></div>
-          <div class="paramDesc">Higher values create more detailed cloth (slower).</div>
-        </div>
-        
-        <!-- Quality Settings -->
-        <div class="parameter">
-          <div class="paramHeader">Quality Settings:</div>
-          <div class="paramRadio" id="qualityRadioGroup"></div>
-          <div class="paramDesc">
-            Lower quality for better performance on slower devices.
-          </div>
-        </div>
-      </div>
-
-      <!-- Materials Tab -->
-      <div id="matTab" class="tabContent">
-        <div class="sectionTitle">Fabric Presets</div>
-        <p>Select a preset to automatically configure cloth material properties.</p>
-        
-        <div class="materialPresets" id="materialPresetCards">
-          <!-- Material cards will be added here via JavaScript -->
-        </div>
-        
-        <div id="fabricDescription" class="paramDesc" style="margin: 10px 0;">
-          Select a fabric to see its properties.
-        </div>
-        
-        <div class="sectionTitle">Material Properties</div>
-        
-        <!-- Damping -->
-        <div class="parameter">
-          <div class="paramHeader">Damping: <span id="dampingVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="dampingRadioGroup"></div>
-          <div id="dampingContainer" class="paramContainer">
-            <div id="dampingSlider"></div>
-            <div class="paramDesc">Controls energy loss. Lower = more damping.</div>
-          </div>
-        </div>
-
-        <!-- Iterations -->
-        <div class="parameter">
-          <div class="paramHeader">Iterations: <span id="iterationsVal" class="sliderValue">1</span></div>
-          <div class="paramRadio" id="iterationsRadioGroup"></div>
-          <div id="iterationsContainer" class="paramContainer">
-            <div id="iterationsSlider"></div>
-            <div class="paramDesc">Constraint relaxations per frame. Higher = more stable.</div>
-          </div>
-        </div>
-
-        <!-- Stretch -->
-        <div class="parameter">
-          <div class="paramHeader">Stretch: <span id="stretchVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="stretchRadioGroup"></div>
-          <div id="stretchContainer" class="paramContainer">
-            <div id="stretchSlider"></div>
-            <div class="paramDesc">Affects cloth extension. Higher = less stretchy.</div>
-          </div>
-        </div>
-
-        <!-- Shear -->
-        <div class="parameter">
-          <div class="paramHeader">Shear: <span id="shearVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="shearRadioGroup"></div>
-          <div id="shearContainer" class="paramContainer">
-            <div id="shearSlider"></div>
-            <div class="paramDesc">Resists diagonal distortion. Higher = less deformable.</div>
-          </div>
-        </div>
-
-        <!-- Bending -->
-        <div class="parameter">
-          <div class="paramHeader">Bending: <span id="bendingVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="bendingRadioGroup"></div>
-          <div id="bendingContainer" class="paramContainer">
-            <div id="bendingSlider"></div>
-            <div class="paramDesc">Resistance to sharp folds. Higher = stiffer fabric.</div>
-          </div>
-        </div>
-
-        <!-- Weight -->
-        <div class="parameter">
-          <div class="paramHeader">Weight: <span id="weightVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="weightRadioGroup"></div>
-          <div id="weightContainer" class="paramContainer">
-            <div id="weightSlider"></div>
-            <div class="paramDesc">Fabric mass. Higher = heavier cloth.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Forces Tab -->
-      <div id="forceTab" class="tabContent">
-        <div class="sectionTitle">Gravity</div>
-        
-        <!-- Gravity -->
-        <div class="parameter">
-          <div class="paramHeader">Gravity: <span id="gravityVal" class="sliderValue">0.00</span></div>
-          <div class="paramRadio" id="gravityRadioGroup"></div>
-          <div id="gravityContainer" class="paramContainer">
-            <div id="gravitySlider"></div>
-            <div class="paramDesc">Downward acceleration (0-1).</div>
-          </div>
-        </div>
-        
-        <div class="sectionTitle">Wind Forces</div>
-        
-        <!-- Wind X -->
-        <div class="parameter">
-          <div class="paramHeader">Wind X: <span id="windXVal" class="sliderValue">0.00</span></div>
-          <div class="paramRadio" id="windXRadioGroup"></div>
-          <div id="windXContainer" class="paramContainer">
-            <div id="windXSlider"></div>
-            <div class="paramDesc">Wind force along X axis (-1 to 1).</div>
-          </div>
-        </div>
-
-        <!-- Wind Y -->
-        <div class="parameter">
-          <div class="paramHeader">Wind Y: <span id="windYVal" class="sliderValue">0.00</span></div>
-          <div class="paramRadio" id="windYRadioGroup"></div>
-          <div id="windYContainer" class="paramContainer">
-            <div id="windYSlider"></div>
-            <div class="paramDesc">Wind force along Y axis (-1 to 1).</div>
-          </div>
-        </div>
-
-        <!-- Wind Z -->
-        <div class="parameter">
-          <div class="paramHeader">Wind Z: <span id="windZVal" class="sliderValue">0.00</span></div>
-          <div class="paramRadio" id="windZRadioGroup"></div>
-          <div id="windZContainer" class="paramContainer">
-            <div id="windZSlider"></div>
-            <div class="paramDesc">Wind force along Z axis (-1 to 1).</div>
-          </div>
-        </div>
-
-        <!-- Wind Buffer -->
-        <div class="parameter">
-          <div class="paramHeader">Wind Buffer: <span id="windBufVal" class="sliderValue">1.00</span></div>
-          <div class="paramRadio" id="windBufRadioGroup"></div>
-          <div id="windBufContainer" class="paramContainer">
-            <div id="windBufSlider"></div>
-            <div class="paramDesc">Scales overall wind strength (0-2).</div>
-          </div>
-        </div>
-        
-        <div class="sectionTitle">Animation Presets</div>
-        <select id="animationPresetSelect">
-          <option value="">Select animation preset...</option>
-          <option value="breeze">Gentle Breeze</option>
-          <option value="gust">Strong Wind Gust</option>
-          <option value="drop">Fabric Drop</option>
-          <option value="material">Material Test</option>
-          <option value="gravity">Gravity Increase</option>
-        </select>
-        
-        <div class="sectionTitle">Recording</div>
-        <div class="animControls">
-          <button class="animBtn" id="recordBtn">Start Recording</button>
-          <button class="animBtn" id="playBtn" disabled>Play Animation</button>
-        </div>
-        <button id="timelapseBtn">Create Time-lapse</button>
-      </div>
-
-      <!-- Learning Tab -->
-      <div id="learnTab" class="tabContent">
-        <div class="sectionTitle">Educational Tools</div>
-        <p>Learn about cloth physics and simulation through interactive guides and visualizations.</p>
-        
-        <button id="showExplanationsBtn">Show Explanations</button>
-        <button id="showPhysicsBtn">Show Physics Metrics</button>
-        <button id="startLearningBtn">Start Guided Learning</button>
-        <button id="showComparisonBtn">Show Real vs. Simulated</button>
-        
-        <div class="sectionTitle">About This Simulation</div>
-        <p>
-          This 3D cloth simulator demonstrates the physics of fabric using a mass-spring model with position-based dynamics.
-        </p>
-        <p>
-          The simulation uses three types of constraints:
-        </p>
-        <ul>
-          <li><strong>Structural</strong> - Maintains cloth shape</li>
-          <li><strong>Shear</strong> - Prevents diagonal deformation</li>
-          <li><strong>Bending</strong> - Controls fold resistance</li>
-        </ul>
-        <p>
-          Experiment with different parameters to see how they affect cloth behavior!
-        </p>
-      </div>
-
-      <div class="bottomButtons">
-        <button id="playPauseBtn">Pause Simulation</button>
-        <button id="resetOrientationBtn">Reset Orientation</button>
-        <button id="resetBtn">Reset Cloth</button>
-      </div>
-    </div>
-
-    <div id="canvasContainer"></div>
-
-    <script>
-      /* PERFORMANCE OPTIMIZATION VARIABLES */
-      let lastFrameTime = 0;
-      let frameRate = 0;
-      let frameCount = 0;
-      let frameRateArray = [];
-      let showPerformanceMetrics = false;
-      let simulationQuality = "high"; // "low", "medium", "high"
-      let adaptiveRendering = true; // Automatically adjust quality if necessary
-      
-      /* CLOTH SETTINGS */
-      let cols = 20, rows = 20, spacing = 20;
-      let clothPoints = [], clothConstraints = [];
-      let grid = [], horizontal = [], vertical = [], centers = [];
-
-      /* SPHERE for Draped mode */
-      let sphereCentre = { x: 0, y: 0, z: 0 };
-      let sphereRadius = 100;
-
-      /* CYLINDER parameters for Draped mode */
-      let cylRadius = 100;
-      let cylHeight = 300;
-      let cylinderTopY = -50;
-      let cylinderBottomY = cylinderTopY + cylHeight; // 250
-
-      /* Invisible floor */
-      let floorY = 150;
-
-      /* SIMULATION PARAMETERS (default) */
-      let damping = 0.98;
-      let iterations = 5;
-      let stretchFactor = 1.0;
-      let shearFactor = 1.0;
-      let bendingFactor = 1.0;
-      let weight = 1.0;
-      let windX = 0.2, windY = 0, windZ = 0.1;
-      let windBuffer = 1.0;
-      let gravity = 0.4;
-
-      /* BASELINE (Off) values */
-      const BASE_DAMPING = 1.0;
-      const BASE_ITERATIONS = 1;
-      const BASE_STRETCH = 1.0;
-      const BASE_SHEAR = 1.0;
-      const BASE_BENDING = 1.0;
-      const BASE_WEIGHT = 1.0;
-      const BASE_WINDX = 0.0, BASE_WINDY = 0.0, BASE_WINDZ = 0.0;
-      const BASE_WINDBUFFER = 1.0;
-      const BASE_GRAVITY = 0.0;
-
-      /* FLAGS for each parameter */
-      let dampingOn = false;
-      let iterationsOn = false;
-      let stretchOn = false;
-      let shearOn = false;
-      let bendingOn = false;
-      let weightOn = false;
-      let windXOn = false;
-      let windYOn = false;
-      let windZOn = false;
-      let windBufOn = false;
-      let gravityOn = false;
-
-      // Shading modes
-      let shadingMode = "off"; // "off", "cloth", "overlaid", "stress", "structure"
-
-      /* MODES */
-      let pinningMode = "top";         // Only for Plane mode
-      let interactionMode = "rotate";  // "rotate" or "drag"
-      let simulationMode = "plane";    // "plane" or "draped"
-      let formMode = "sphere";         // For Draped mode: "sphere" or "cylinder"
-
-      /* CLOTH POSITIONING */
-      let clothShiftX = -40;
-
-      /* ORIENTATION RESET FLAG */
-      let doResetOrientation = false;
-
-      /* PLAY/PAUSE FLAG */
-      let simulationRunning = true;
-
-      /* 3D DRAGGING VARIABLES */
-      let dragPointIndex = null;
-      let dragPlaneZ = 0;
-
-      // For Stress shading, store each cell's rest area
-      let cellRestArea = [];
-
-      // For Structure shading, track constraint type
-      const STRUCTURAL = "structural";
-      const SHEAR = "shear";
-      const BENDING = "bending";
-      
-      // Real-world fabric templates
-      const FABRIC_PRESETS = {
-        "cotton": {
-          name: "Cotton",
-          properties: {
-            damping: 0.97,
-            stretch: 0.95,
-            bending: 0.95,
-            shear: 0.95,
-            weight: 0.9,
-            description: "Medium-weight fabric with moderate stretch and stiffness."
-          }
-        },
-        "silk": {
-          name: "Silk",
-          properties: {
-            damping: 0.99,
-            stretch: 1.1,
-            bending: 0.7,
-            shear: 0.8,
-            weight: 0.7,
-            description: "Lightweight fabric with low bending resistance and high sheen."
-          }
-        },
-        "denim": {
-          name: "Denim",
-          properties: {
-            damping: 0.95,
-            stretch: 0.85,
-            bending: 1.1,
-            shear: 1.1,
-            weight: 1.2,
-            description: "Heavy, sturdy fabric with high bending resistance and weight."
-          }
-        },
-        "wool": {
-          name: "Wool",
-          properties: {
-            damping: 0.96,
-            stretch: 1.0,
-            bending: 0.9,
-            shear: 0.9,
-            weight: 1.1,
-            description: "Warm fabric with moderate stretch and good drape."
-          }
-        },
-        "lycra": {
-          name: "Lycra/Spandex",
-          properties: {
-            damping: 0.98,
-            stretch: 1.3,
-            bending: 0.8,
-            shear: 0.7,
-            weight: 0.8,
-            description: "Highly stretchy synthetic fabric with good recovery."
-          }
-        },
-        "canvas": {
-          name: "Canvas",
-          properties: {
-            damping: 0.94,
-            stretch: 0.8,
-            bending: 1.2,
-            shear: 1.2,
-            weight: 1.3,
-            description: "Very stiff, heavyweight fabric with minimal stretch."
-          }
-        },
-        "chiffon": {
-          name: "Chiffon",
-          properties: {
-            damping: 0.98,
-            stretch: 1.05,
-            bending: 0.6,
-            shear: 0.7,
-            weight: 0.5,
-            description: "Very lightweight, sheer fabric with excellent drape."
-          }
-        }
-      };
-      
-      /* GUIDED LEARNING SCENARIOS */
-      const LEARNING_SCENARIOS = [
-        {
-          title: "Basic Cloth Behavior",
-          steps: [
-            {
-              title: "Gravity and Weight",
-              instructions: "We'll start with a simple cloth plane and observe how gravity affects it.",
-              setup: () => {
-                // Set parameters for this step
-                setSimulationMode("plane");
-                setPinningMode("top");
-                setGravity(true, 0.4);
-                setWind(false, 0, 0, 0);
-                setDamping(true, 0.98);
-                setWeight(true, 1.0);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "Observe how the cloth hangs under gravity. The weight parameter controls how heavy the cloth appears, affecting how much it stretches."
-            },
-            {
-              title: "Wind Effects",
-              instructions: "Now let's introduce some wind to see how the cloth responds to external forces.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("top");
-                setGravity(true, 0.4);
-                setWind(true, 0.3, 0, 0.1);
-                setWindBuffer(true, 1.0);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "Wind creates complex rippling patterns in the cloth. The wind strength and direction can be adjusted to create different effects. Notice how the cloth billows and creates natural-looking waves."
-            },
-            {
-              title: "Material Properties",
-              instructions: "Let's explore how different material properties affect the cloth behavior.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("top");
-                setStretch(true, 1.1);
-                setBending(true, 0.9);
-                setGravity(true, 0.4);
-                setWind(true, 0.1, 0, 0.05);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "Material properties like stretch and bending resistance define how the cloth behaves. Higher stretch resistance (>1.0) makes the cloth less elastic, while lower values make it stretchier. Bending resistance affects how easily the cloth forms creases and folds."
-            }
-          ]
-        },
-        {
-          title: "Understanding Constraints",
-          steps: [
-            {
-              title: "Structural Constraints",
-              instructions: "Let's examine the structural constraints that form the basic grid of the cloth.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("corners");
-                setStretch(true, 1.0);
-                setShear(false, 1.0);
-                setBending(false, 1.0);
-                setShadingMode("structure");
-                resetCloth();
-              },
-              explanation: "Structural constraints (green lines) maintain distance between adjacent points in the cloth grid. They resist stretching and compression along the main threads of the fabric."
-            },
-            {
-              title: "Shear Constraints",
-              instructions: "Now let's add shear constraints to see how they affect cloth behavior.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("corners");
-                setStretch(true, 1.0);
-                setShear(true, 1.0);
-                setBending(false, 1.0);
-                setShadingMode("structure");
-                resetCloth();
-              },
-              explanation: "Shear constraints (yellow diagonal lines) prevent the cloth from freely deforming in diagonal directions. They maintain the rectangular structure of each grid cell, like the bias resistance in woven fabrics."
-            },
-            {
-              title: "Bending Constraints",
-              instructions: "Finally, let's add bending constraints to complete the cloth model.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("corners");
-                setStretch(true, 1.0);
-                setShear(true, 1.0);
-                setBending(true, 1.0);
-                setShadingMode("structure");
-                resetCloth();
-              },
-              explanation: "Bending constraints (blue lines) connect alternating points in the grid. They resist folding and creasing of the cloth, acting similar to the fabric's stiffness or thickness."
-            }
-          ]
-        },
-        {
-          title: "Stress Analysis",
-          steps: [
-            {
-              title: "Visualizing Stress",
-              instructions: "Let's observe how stress is distributed in a hanging cloth.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("top");
-                setGravity(true, 0.4);
-                setWind(false, 0, 0, 0);
-                setShadingMode("stress");
-                resetCloth();
-              },
-              explanation: "The stress visualization shows areas under tension (red) or compression (blue). Notice how the stress concentrates near the pinned points where the cloth is hanging from."
-            },
-            {
-              title: "Draping Stress",
-              instructions: "Now let's see how stress is distributed when cloth drapes over an object.",
-              setup: () => {
-                setSimulationMode("draped");
-                setFormMode("sphere");
-                setGravity(true, 0.4);
-                setShadingMode("stress");
-                resetCloth();
-              },
-              explanation: "When cloth drapes over an object, stress is distributed differently. Areas in contact with the object show compression, while sections hanging freely show tension. This is similar to how real fabrics behave when draped."
-            }
-          ]
-        },
-        {
-          title: "Collision Physics",
-          steps: [
-            {
-              title: "Self-Collision",
-              instructions: "Let's observe how cloth interacts with itself through self-collision.",
-              setup: () => {
-                setSimulationMode("plane");
-                setPinningMode("corners");
-                setGravity(true, 0.5);
-                setWind(true, 0.1, 0, 0.3);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "As the cloth moves and folds, it may intersect with itself. Self-collision detection prevents cloth from passing through itself, creating realistic folding behavior."
-            },
-            {
-              title: "Object Collision",
-              instructions: "Now let's see how cloth interacts with solid objects.",
-              setup: () => {
-                setSimulationMode("draped");
-                setFormMode("sphere");
-                setGravity(true, 0.4);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "When cloth interacts with solid objects, collision detection ensures it wraps naturally around the object without penetrating it. Observe how the cloth conforms to the object's shape while still responding to gravity."
-            },
-            {
-              title: "Advanced Collision",
-              instructions: "Let's try a more complex form to drape over.",
-              setup: () => {
-                setSimulationMode("draped");
-                setFormMode("cylinder");
-                setGravity(true, 0.4);
-                setShadingMode("cloth");
-                resetCloth();
-              },
-              explanation: "Different object shapes create different draping patterns. The cylindrical form creates distinct folds and wrinkles as the cloth conforms to its shape while still hanging under gravity."
-            }
-          ]
-        }
-      ];
-      
-      /* Global variables for various systems */
-      // Animation system
-      let recordingActive = false;
-      let recordedFrames = [];
-      let playbackActive = false;
-      let playbackFrame = 0;
-      let playbackInterval = null;
-      
-      // Guided learning system
-      let guidedLearningActive = false;
-      let currentStep = 0;
-      
-      /* ERROR HANDLING */
-      function showError(message) {
-        let errorDiv = select('#errorMessage');
-        if (!errorDiv) {
-          errorDiv = createDiv(message);
-          errorDiv.id('errorMessage');
-          errorDiv.parent('body');
-        } else {
-          errorDiv.html(message);
-        }
-        
-        errorDiv.style('display', 'block');
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-          errorDiv.style('display', 'none');
-        }, 5000);
-      }
-      
-      /* PERFORMANCE MONITORING */
-      function updatePerformanceMonitor() {
-        const currentTime = millis();
-        const elapsedTime = currentTime - lastFrameTime;
-        lastFrameTime = currentTime;
-        
-        if (elapsedTime > 0) {
-          const instantFPS = 1000 / elapsedTime;
-          frameRateArray.push(instantFPS);
-          
-          // Keep only the last 30 frames for averaging
-          if (frameRateArray.length > 30) {
-            frameRateArray.shift();
-          }
-          
-          // Calculate average FPS
-          const avgFPS = frameRateArray.reduce((sum, fps) => sum + fps, 0) / frameRateArray.length;
-          frameRate = avgFPS;
-          
-          // Update performance indicator if visible
-          if (showPerformanceMetrics) {
-            select('#performanceIndicator').html(`FPS: ${frameRate.toFixed(1)} | Points: ${clothPoints.length} | Quality: ${simulationQuality}`);
-          }
-          
-          // Auto-adjust quality if necessary and enabled
-          if (adaptiveRendering && frameCount % 60 === 0) {
-            if (frameRate < 15 && simulationQuality !== "low") {
-              setSimulationQuality("low");
-              showError("Performance is low - reducing quality. Check settings tab.");
-            } else if (frameRate < 25 && frameRate >= 15 && simulationQuality === "high") {
-              setSimulationQuality("medium");
-            }
-          }
-        }
-        
-        frameCount++;
-      }
-      
-      /* QUALITY SETTINGS */
-      function setSimulationQuality(quality) {
-        simulationQuality = quality;
-        
-        // Update radio button if exists
-        try {
-          const qualityRadios = selectAll('input[name="quality_radio"]');
-          for (let r of qualityRadios) {
-            if (r.value() === quality) {
-              r.checked(true);
-            }
-          }
-        } catch (e) {
-          console.error("Could not update quality radio buttons:", e);
-        }
-        
-        // Apply quality settings
-        switch (quality) {
-          case "low":
-            // Reduce cloth resolution
-            if (cols > 15) {
-              cols = rows = 15;
-              setupCloth();
-            }
-            break;
-            
-          case "medium":
-            // Moderate resolution
-            if (cols !== 20) {
-              cols = rows = 20;
-              setupCloth();
-            }
-            break;
-            
-          case "high":
-            // Keep high resolution as set by user
-            // Do nothing here - let user control resolution
-            break;
-        }
-      }
-      
-      function setup() {
-        try {
-          let cnv = createCanvas(windowWidth - 280, windowHeight, WEBGL);
-          cnv.parent("canvasContainer");
-          cnv.style("display", "block");
-          
-          // Initialize UI and systems
-          createUI();
-          setupCloth();
-          
-          // Initialize educational systems
-          setupEducationalOverlays();
-          setupPhysicsMetrics();
-          setupGuidedLearning();
-          
-          // Create fabric presets
-          createMaterialPresets();
-          
-          // Add explanation triggers
-          addExplanationTriggers();
-          
-          // Setup performance monitoring
-          select('#performanceIndicator').style('display', showPerformanceMetrics ? 'block' : 'none');
-          
-          // Mobile menu toggle
-          select('#menuToggle').mousePressed(() => {
-            select('#uiPanel').toggleClass('active');
-          });
-          
-          // Hide loading screen after everything is initialized
-          setTimeout(() => {
-            select('#loadingOverlay').style('display', 'none');
-          }, 1000);
-          
-        } catch (error) {
-          console.error("Error during setup:", error);
-          showError("Error initializing the application. Please try refreshing the page.");
-        }
-      }
-      
-      function draw() {
-        try {
-          // Clear background
-          background(30);
-          
-          // Update performance metrics
-          updatePerformanceMonitor();
-          
-          // Handle camera orientation reset
-          if (doResetOrientation) {
-            camera(0, 0, (height/2) / tan(PI*30/180),
-                  0, 0, 0,
-                  0, 1, 0);
-            doResetOrientation = false;
-          }
-          
-          // Handle camera controls
-          if (interactionMode === "rotate" && !playbackActive) {
-            orbitControl();
-          }
-          
-          // Set up lighting
-          setupLighting();
-          
-          // Run simulation if active and not in playback mode
-          if (simulationRunning && !playbackActive) {
-            updateCloth();
-          }
-          
-          // Draw the scene with visualization method based on quality
-          if (simulationQuality === "low") {
-            // Simpler rendering for low quality
-            drawLowQualityScene();
-          } else {
-            // Normal rendering for medium/high quality
-            drawScene();
-          }
-          
-          // Update physics metrics if enabled
-          if (select('#physicsMetrics') && select('#physicsMetrics').style('display') === 'block') {
-            updatePhysicsMetrics();
-          }
-          
-        } catch (error) {
-          console.error("Error in draw loop:", error);
-          
-          // Only show error if it's not happening continuously
-          if (frameCount % 60 === 0) {
-            showError("Rendering error encountered. Try reducing the cloth resolution or quality.");
-          }
-          
-          // Attempt to recover by reducing quality
-          if (frameCount % 300 === 0 && simulationQuality !== "low") {
-            setSimulationQuality("low");
-          }
-        }
-      }
-      
-      // Simplified scene rendering for low quality mode
-      function drawLowQualityScene() {
-        // If draped mode, draw the chosen form
-        if (simulationMode === "draped") {
-          noStroke();
-          fill("#333"); // dark grey
-          if (formMode === "sphere") {
-            push();
-            translate(sphereCentre.x, sphereCentre.y, sphereCentre.z);
-            sphere(sphereRadius);
-            pop();
-          } else {
-            push();
-            let midY = (cylinderTopY + cylinderBottomY)/2;
-            translate(0, midY, 0);
-            cylinder(cylRadius, cylHeight);
-            pop();
-          }
-        }
-        
-        // Simplified wireframe rendering
-        stroke(255);
-        strokeWeight(1);
-        noFill();
-        
-        // Draw only a subset of constraints for better performance
-        for (let i = 0; i < clothConstraints.length; i += 2) {
-          let c = clothConstraints[i];
-          let p1 = clothPoints[c.p1];
-          let p2 = clothPoints[c.p2];
-          line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-        }
-        
-        // Skip rendering points to improve performance
-      }
-      
-      // Advanced lighting setup
-      function setupLighting() {
-        try {
-          // Ambient light
-          ambientLight(60, 60, 70);
-          
-          // Main directional light
-          directionalLight(255, 255, 255, 0.5, 1, -0.5);
-          
-          // Point light that follows viewer - only in high quality mode
-          if (simulationQuality === "high") {
-            let camX = sin(frameCount * 0.01) * 200;
-            let camZ = cos(frameCount * 0.01) * 200;
-            pointLight(255, 220, 180, camX, -100, camZ);
-          }
-        } catch (error) {
-          console.error("Error in lighting setup:", error);
-          // Fallback to basic lighting
-          ambientLight(200, 200, 200);
-        }
-      }
-      
-      // Separated scene drawing
-      function drawScene() {
-        // If draped mode, draw the chosen form + invisible floor
-        if (simulationMode === "draped") {
-          noStroke();
-          fill("#333"); // dark grey
-          if (formMode === "sphere") {
-            push();
-            translate(sphereCentre.x, sphereCentre.y, sphereCentre.z);
-            sphere(sphereRadius);
-            pop();
-          } else {
-            push();
-            let midY = (cylinderTopY + cylinderBottomY)/2;
-            translate(0, midY, 0);
-            cylinder(cylRadius, cylHeight);
-            pop();
-          }
-          // Draw invisible floor (wireframe)
-          push();
-          translate(0, floorY, 0);
-          noFill();
-          stroke(50);
-          plane(1000, 1000);
-          pop();
-        }
-        
-        // Choose rendering method based on shading mode
-        if (shadingMode === "off") {
-          renderWireframe();
-        } else if (shadingMode === "cloth" || shadingMode === "overlaid") {
-          renderShaded();
-          if (shadingMode === "overlaid") {
-            renderWireframe();
-          }
-        } else if (shadingMode === "stress") {
-          renderStressMap();
-        } else if (shadingMode === "structure") {
-          renderStructure();
-        }
-      }
-      
-      // Original wireframe rendering
-      function renderWireframe() {
-        stroke(255);
-        strokeWeight(2);
-        noFill();
-        
-        // Only draw a subset of constraints in low/medium quality
-        const stride = simulationQuality === "high" ? 1 : (simulationQuality === "medium" ? 2 : 3);
-        
-        for (let i = 0; i < clothConstraints.length; i += stride) {
-          let c = clothConstraints[i];
-          let p1 = clothPoints[c.p1];
-          let p2 = clothPoints[c.p2];
-          line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-        }
-        
-        // Don't render points in low quality mode
-        if (simulationQuality !== "low") {
-          fill(255);
-          noStroke();
-          for (let i = 0; i < clothPoints.length; i += stride) {
-            let p = clothPoints[i];
-            push();
-            translate(p.x, p.y, p.z);
-            sphere(2);
-            pop();
-          }
-        }
-      }
-      
-      // Original shaded rendering with better lighting
-      function renderShaded() {
-        try {
-          let minY = Infinity, maxY = -Infinity;
-          
-          // Sample a subset of points for min/max Y for better performance
-          const step = simulationQuality === "high" ? 1 : (simulationQuality === "medium" ? 2 : 3);
-          
-          for (let y = 0; y < rows; y += step) {
-            for (let x = 0; x < cols; x += step) {
-              let pt = clothPoints[grid[y][x]];
-              if (pt.y < minY) minY = pt.y;
-              if (pt.y > maxY) maxY = pt.y;
-            }
-          }
-          
-          // Enhanced shading with better lighting
-          noStroke();
-          
-          // Only use specular material in high quality mode
-          if (simulationQuality === "high") {
-            specularMaterial(180);
-            shininess(50);
-          }
-          
-          for (let y = 0; y < rows - 1; y += step) {
-            for (let x = 0; x < cols - 1; x += step) {
-              // Skip some cells in low quality mode
-              if (simulationQuality === "low" && (x + y) % 2 !== 0) continue;
-              
-              let A = clothPoints[grid[y][x]];
-              let B = clothPoints[grid[y][x+1]];
-              let C = clothPoints[grid[y+1][x+1]];
-              let D = clothPoints[grid[y+1][x]];
-              
-              // Color based on height
-              let avgY = (A.y+B.y+C.y+D.y)*0.25;
-              let hue = map(avgY, minY, maxY, 190, 230);
-              let saturation = 20;
-              let brightness = map(avgY, minY, maxY, 90, 50);
-              
-              fill(hue, saturation, brightness);
-              
-              beginShape();
-              vertex(A.x, A.y, A.z);
-              vertex(B.x, B.y, B.z);
-              vertex(C.x, C.y, C.z);
-              vertex(D.x, D.y, D.z);
-              endShape(CLOSE);
-            }
-          }
-        } catch (error) {
-          console.error("Error in shaded rendering:", error);
-          // Fallback to simple rendering
-          background(30);
-          renderWireframe();
-        }
-      }
-      
-      // Original stress map rendering with enhanced colors
-      function renderStressMap() {
-        try {
-          noStroke();
-          let sensitivityFactor = 1.0;
-          
-          // Sample fewer cells in low/medium quality
-          const step = simulationQuality === "high" ? 1 : (simulationQuality === "medium" ? 2 : 3);
-          
-          for (let y = 0; y < rows - 1; y += step) {
-            for (let x = 0; x < cols - 1; x += step) {
-              // Skip some cells in low quality mode
-              if (simulationQuality === "low" && (x + y) % 2 !== 0) continue;
-              
-              let idxA = grid[y][x];
-              let idxB = grid[y][x+1];
-              let idxC = grid[y+1][x];
-              let idxD = grid[y+1][x+1];
-              
-              // Check indices are valid
-              if (idxA === undefined || idxB === undefined || idxC === undefined || idxD === undefined ||
-                  clothPoints[idxA] === undefined || clothPoints[idxB] === undefined || 
-                  clothPoints[idxC] === undefined || clothPoints[idxD] === undefined) {
-                continue;
-              }
-              
-              let A = clothPoints[idxA];
-              let B = clothPoints[idxB];
-              let C = clothPoints[idxC];
-              let D = clothPoints[idxD];
-              
-              let currArea = computeQuadArea(A, B, C, D);
-              
-              // Check if we have valid rest area data
-              if (!cellRestArea[y] || cellRestArea[y][x] === undefined) {
-                continue;
-              }
-              
-              let restArea = cellRestArea[y][x];
-              let diff = currArea - restArea;
-              let maxDelta = restArea * 1.0 * sensitivityFactor;
-              let val = constrain(diff, -maxDelta, maxDelta);
-              let ratio = map(val, -maxDelta, maxDelta, 0, 1);
-              
-              // Enhanced color gradient for stress
-              let r, g, b;
-              if (ratio < 0.5) {
-                // Compression: Blue to White
-                let blueRatio = map(ratio, 0, 0.5, 1, 0);
-                r = 255 * (1 - blueRatio);
-                g = 255 * (1 - blueRatio);
-                b = 255;
-              } else {
-                // Tension: White to Red
-                let redRatio = map(ratio, 0.5, 1, 0, 1);
-                r = 255;
-                g = 255 * (1 - redRatio);
-                b = 255 * (1 - redRatio);
-              }
-              
-              fill(r, g, b);
-              beginShape();
-              vertex(A.x, A.y, A.z);
-              vertex(B.x, B.y, B.z);
-              vertex(C.x, C.y, C.z);
-              vertex(D.x, D.y, D.z);
-              endShape(CLOSE);
-            }
-          }
-        } catch (error) {
-          console.error("Error in stress rendering:", error);
-          // Fallback to wireframe
-          renderWireframe();
-        }
-      }
-      
-      // Original structure visualization with enhanced colors
-      function renderStructure() {
-        try {
-          // Colour-coded lines by constraint type
-          noFill();
-          strokeWeight(2);
-          
-          // Different stride based on quality
-          const stride = simulationQuality === "high" ? 1 : (simulationQuality === "medium" ? 2 : 3);
-          
-          // Draw constraints with different colors based on type
-          for (let i = 0; i < clothConstraints.length; i += stride) {
-            let c = clothConstraints[i];
-            let p1 = clothPoints[c.p1];
-            let p2 = clothPoints[c.p2];
-            
-            if (c.type === STRUCTURAL) {
-              stroke(0, 220, 100, 200);
-            } else if (c.type === SHEAR) {
-              stroke(255, 200, 0, 200);
-            } else if (c.type === BENDING) {
-              stroke(50, 150, 255, 200);
-            } else {
-              stroke(255, 255, 255, 200);
-            }
-            
-            line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-          }
-          
-          // Skip rendering points in low quality mode
-          if (simulationQuality !== "low") {
-            fill(255, 100, 100);
-            noStroke();
-            for (let i = 0; i < clothPoints.length; i += stride * 2) {
-              let p = clothPoints[i];
-              push();
-              translate(p.x, p.y, p.z);
-              sphere(2);
-              pop();
-            }
-          }
-        } catch (error) {
-          console.error("Error in structure rendering:", error);
-          // Fallback to simpler rendering
-          stroke(255);
-          noFill();
-          for (let i = 0; i < clothConstraints.length; i += 3) {
-            let c = clothConstraints[i];
-            let p1 = clothPoints[c.p1];
-            let p2 = clothPoints[c.p2];
-            line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-          }
-        }
-      }
-
-      function createUI() {
-        try {
-          // Reset Cloth and Reset Orientation buttons
-          select("#resetBtn").mousePressed(setupCloth);
-          select("#resetOrientationBtn").mousePressed(() => { doResetOrientation = true; });
-
-          // Play/Pause Simulation button
-          const playPauseBtn = select("#playPauseBtn");
-          playPauseBtn.mousePressed(() => {
-            simulationRunning = !simulationRunning;
-            playPauseBtn.html(simulationRunning ? "Pause Simulation" : "Play Simulation");
-          });
-
-          // Simulation Mode radio
-          let simModeRadio = createRadio();
-          simModeRadio.option("plane", "Plane");
-          simModeRadio.option("draped", "Draped");
-          simModeRadio.selected("plane");
-          simModeRadio.elt.name = "simulationMode_radio";
-          simModeRadio.parent("simModeRadio");
-          simModeRadio.changed(() => {
-            simulationMode = simModeRadio.value();
-            setupCloth();
-          });
-
-          // Form Mode radio (only relevant in Draped mode)
-          let formModeRadio = createRadio();
-          formModeRadio.option("sphere", "Sphere");
-          formModeRadio.option("cylinder", "Cylinder");
-          formModeRadio.selected("sphere");
-          formModeRadio.elt.name = "formMode_radio";
-          formModeRadio.parent("formModeRadio");
-          formModeRadio.changed(() => {
-            formMode = formModeRadio.value();
-            if (simulationMode === "draped") setupCloth();
-          });
-
-          // Interaction Mode radio
-          let interactionRadio = createRadio();
-          interactionRadio.option("rotate", "Rotate");
-          interactionRadio.option("drag", "Drag");
-          interactionRadio.selected("rotate");
-          interactionRadio.elt.name = "interaction_radio";
-          interactionRadio.parent("interactionRadioGroup");
-          interactionRadio.changed(() => {
-            interactionMode = interactionRadio.value();
-          });
-
-          // Pinning Mode radio (for Plane mode)
-          let pinRadio = createRadio();
-          pinRadio.option("top", "Top Pinned");
-          pinRadio.option("corners", "Corner Pinned");
-          pinRadio.selected("top");
-          pinRadio.elt.name = "pinning_radio";
-          pinRadio.parent("pinningRadio");
-          pinRadio.changed(() => {
-            pinningMode = pinRadio.value();
-            if (simulationMode === "plane") setupCloth();
-          });
-
-          // Quality Mode radio
-          let qualityRadio = createRadio();
-          qualityRadio.option("low", "Low");
-          qualityRadio.option("medium", "Medium");
-          qualityRadio.option("high", "High");
-          qualityRadio.selected("high");
-          qualityRadio.elt.name = "quality_radio";
-          qualityRadio.parent("qualityRadioGroup");
-          qualityRadio.changed(() => {
-            simulationQuality = qualityRadio.value();
-            // Handle adaptive quality changes
-            if (simulationQuality === "high") {
-              adaptiveRendering = true;
-            } else {
-              adaptiveRendering = false;
-            }
-          });
-
-          // Shading radio => "off", "cloth", "overlaid", "stress", "structure"
-          let shadingRadio = createRadio();
-          shadingRadio.option("off", "Lines Only");
-          shadingRadio.option("cloth", "Solid");
-          shadingRadio.option("overlaid", "Overlaid");
-          shadingRadio.option("stress", "Stress");
-          shadingRadio.option("structure", "Structure");
-          shadingRadio.elt.name = "shading_radio";
-          shadingRadio.parent("shadingRadioGroup");
-          shadingRadio.selected("off");
-          shadingRadio.changed(() => {
-            shadingMode = shadingRadio.value();
-          });
-          
-          // Cloth resolution slider
-          createSliderAndLabel("resolutionSlider", (val) => {
-            try {
-              // Convert slider value to grid size (10-40)
-              let newSize = Math.floor(map(val, 0, 100, 10, 40));
-              select("#resolutionVal").html(newSize + "×" + newSize);
-              
-              if (cols !== newSize || rows !== newSize) {
-                cols = rows = newSize;
-                spacing = 800 / newSize; // Adjust spacing based on resolution
-                setupCloth();
-              }
-            } catch (error) {
-              console.error("Error updating resolution:", error);
-            }
-          }, 0, 100, 20, 5);
-
-          // Helper to attach param toggles
-          function attachParamRadio(parentId, setFlag, containerId) {
-            try {
-              let r = createRadio();
-              r.option("off", "Off");
-              r.option("on", "On");
-              r.elt.name = parentId + "_radio";
-              r.parent(parentId);
-              r.selected("off");
-              r.changed(() => {
-                let val = r.value();
-                let on = (val === "on");
-                setFlag(on);
-                if (containerId) {
-                  if (on) select("#" + containerId).style("display", "block");
-                  else select("#" + containerId).style("display", "none");
-                }
-              });
-            } catch (error) {
-              console.error(`Error creating radio for ${parentId}:`, error);
-            }
-          }
-
-          // Attach toggles for each parameter
-          attachParamRadio("dampingRadioGroup", (on) => { dampingOn = on; }, "dampingContainer");
-          attachParamRadio("iterationsRadioGroup", (on) => { iterationsOn = on; }, "iterationsContainer");
-          attachParamRadio("stretchRadioGroup", (on) => { stretchOn = on; }, "stretchContainer");
-          attachParamRadio("shearRadioGroup", (on) => { shearOn = on; }, "shearContainer");
-          attachParamRadio("bendingRadioGroup", (on) => { bendingOn = on; }, "bendingContainer");
-          attachParamRadio("weightRadioGroup", (on) => { weightOn = on; }, "weightContainer");
-          attachParamRadio("windXRadioGroup", (on) => { windXOn = on; }, "windXContainer");
-          attachParamRadio("windYRadioGroup", (on) => { windYOn = on; }, "windYContainer");
-          attachParamRadio("windZRadioGroup", (on) => { windZOn = on; }, "windZContainer");
-          attachParamRadio("windBufRadioGroup", (on) => { windBufOn = on; }, "windBufContainer");
-          attachParamRadio("gravityRadioGroup", (on) => { gravityOn = on; }, "gravityContainer");
-
-          // Helper: Create slider
-          function createSliderAndLabel(divId, callback, min, max, val, step) {
-            try {
-              const slider = createSlider(min, max, val, step);
-              slider.parent(divId);
-              slider.input(() => { callback(slider.value()); });
-              callback(slider.value());
-            } catch (error) {
-              console.error(`Error creating slider for ${divId}:`, error);
-            }
-          }
-
-          // Sliders
-          createSliderAndLabel("dampingSlider", (val) => {
-            damping = val;
-            select("#dampingVal").html(nf(val, 1, 2));
-          }, 0.90, 1.0, 0.98, 0.01);
-
-          createSliderAndLabel("iterationsSlider", (val) => {
-            iterations = val;
-            select("#iterationsVal").html(val);
-          }, 1, 10, 5, 1);
-
-          createSliderAndLabel("stretchSlider", (val) => {
-            stretchFactor = val;
-            select("#stretchVal").html(nf(val, 1, 2));
-          }, 0.8, 1.2, 1.0, 0.01);
-
-          createSliderAndLabel("shearSlider", (val) => {
-            shearFactor = val;
-            select("#shearVal").html(nf(val, 1, 2));
-          }, 0.8, 1.2, 1.0, 0.01);
-
-          createSliderAndLabel("bendingSlider", (val) => {
-            bendingFactor = val;
-            select("#bendingVal").html(nf(val, 1, 2));
-          }, 0.8, 1.2, 1.0, 0.01);
-
-          createSliderAndLabel("weightSlider", (val) => {
-            weight = val;
-            select("#weightVal").html(nf(val, 1, 2));
-          }, 0.5, 2.0, 1.0, 0.1);
-
-          createSliderAndLabel("windXSlider", (val) => {
-            windX = val;
-            select("#windXVal").html(nf(val, 1, 2));
-          }, -1, 1, 0.2, 0.01);
-
-          createSliderAndLabel("windYSlider", (val) => {
-            windY = val;
-            select("#windYVal").html(nf(val, 1, 2));
-          }, -1, 1, 0, 0.01);
-
-          createSliderAndLabel("windZSlider", (val) => {
-            windZ = val;
-            select("#windZVal").html(nf(val, 1, 2));
-          }, -1, 1, 0.1, 0.01);
-
-          createSliderAndLabel("windBufSlider", (val) => {
-            windBuffer = val;
-            select("#windBufVal").html(nf(val, 1, 2));
-          }, 0, 2, 1.0, 0.01);
-
-          createSliderAndLabel("gravitySlider", (val) => {
-            gravity = val;
-            select("#gravityVal").html(nf(val, 1, 2));
-          }, 0, 1, 0.4, 0.01);
-          
-          // Tab Navigation
-          document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-              document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-              document.querySelectorAll('.tabContent').forEach(c => c.classList.remove('active'));
-              
-              this.classList.add('active');
-              document.getElementById(this.getAttribute('onclick').match(/'([^']+)'/)[1]).classList.add('active');
-            });
-          });
-          
-          // Educational overlays button
-          select("#showExplanationsBtn").mousePressed(toggleOverlay);
-          
-          // Physics metrics button
-          select("#showPhysicsBtn").mousePressed(togglePhysicsPanel);
-          
-          // Guided learning button
-          select("#startLearningBtn").mousePressed(toggleGuidedLearning);
-          
-          // Real comparison button
-          select("#showComparisonBtn").mousePressed(toggleComparisonView);
-          
-          // Animation preset dropdown
-          select("#animationPresetSelect").changed(function() {
-            let selected = this.value();
-            if (selected) {
-              applyAnimationPreset(selected);
-            }
-          });
-          
-          // Recording buttons
-          select("#recordBtn").mousePressed(toggleRecording);
-          select("#playBtn").mousePressed(togglePlayback);
-          select("#timelapseBtn").mousePressed(createTimelapse);
-        } catch (error) {
-          console.error("Error creating UI:", error);
-          showError("Error setting up the interface. Please refresh the page.");
-        }
-      }
-      
-      function createMaterialPresets() {
-        try {
-          // Create material preset cards
-          let container = select("#materialPresetCards");
-          
-          // Add custom card
-          let customCard = createDiv();
-          customCard.class('materialCard active');
-          customCard.attribute('data-preset', 'custom');
-          customCard.parent(container);
-          
-          let customName = createDiv('Custom Settings');
-          customName.class('materialName');
-          customName.parent(customCard);
-          
-          let customDesc = createDiv('Your own parameter configuration');
-          customDesc.class('materialDesc');
-          customDesc.parent(customCard);
-          
-          customCard.mousePressed(() => selectMaterialPreset('custom'));
-          
-          // Add preset cards
-          for (let key in FABRIC_PRESETS) {
-            let card = createDiv();
-            card.class('materialCard');
-            card.attribute('data-preset', key);
-            card.parent(container);
-            
-            let name = createDiv(FABRIC_PRESETS[key].name);
-            name.class('materialName');
-            name.parent(card);
-            
-            let desc = createDiv(FABRIC_PRESETS[key].properties.description);
-            desc.class('materialDesc');
-            desc.parent(card);
-            
-            card.mousePressed(() => selectMaterialPreset(key));
-          }
-        } catch (error) {
-          console.error("Error creating material presets:", error);
-        }
-      }
-      
-      function selectMaterialPreset(preset) {
-        try {
-          // Update UI
-          document.querySelectorAll('.materialCard').forEach(card => {
-            card.classList.remove('active');
-            if (card.getAttribute('data-preset') === preset) {
-              card.classList.add('active');
-            }
-          });
-          
-          // Apply preset
-          applyFabricPreset(preset);
-        } catch (error) {
-          console.error("Error selecting material preset:", error);
-        }
-      }
-      
-      /* Setup cloth based on simulation mode */
-      function setupCloth() {
-        try {
-          clothPoints = [];
-          clothConstraints = [];
-          grid = [];
-          horizontal = [];
-          vertical = [];
-          centers = [];
-          cellRestArea = [];
-
-          let clothWidth = (cols - 1) * spacing;
-          let clothHeight = (rows - 1) * spacing;
-
-          if (simulationMode === "plane") {
-            let startX = -clothWidth/2 + clothShiftX;
-            let startY = -clothHeight/2;
-            createClothPoints_Plane(startX, startY, 0);
-
-          } else {
-            // Draped mode
-            if (formMode === "sphere") {
-              sphereCentre = { x: 0, y: 0, z: 0 };
-              sphereRadius = 100;
-              let startY = -sphereRadius;
-              createClothPoints_Draped(-clothWidth/2, startY, -clothHeight/2);
-
-              // Pin centre cloth point to top of sphere
-              let midRow = Math.floor(rows/2);
-              let midCol = Math.floor(cols/2);
-              let centerIdx = grid[midRow][midCol];
-              clothPoints[centerIdx].pinned = true;
-              clothPoints[centerIdx].x = sphereCentre.x;
-              clothPoints[centerIdx].y = sphereCentre.y - sphereRadius;
-              clothPoints[centerIdx].z = sphereCentre.z;
-              clothPoints[centerIdx].oldx = sphereCentre.x;
-              clothPoints[centerIdx].oldy = sphereCentre.y - sphereRadius;
-              clothPoints[centerIdx].oldz = sphereCentre.z;
-
-            } else if (formMode === "cylinder") {
-              let startY = cylinderTopY;
-              createClothPoints_Draped(-clothWidth/2, startY, -clothHeight/2);
-
-              // Pin centre cloth point at cylinder's top centre
-              let midRow = Math.floor(rows/2);
-              let midCol = Math.floor(cols/2);
-              let centerIdx = grid[midRow][midCol];
-              clothPoints[centerIdx].pinned = true;
-              clothPoints[centerIdx].x = 0;
-              clothPoints[centerIdx].y = cylinderTopY;
-              clothPoints[centerIdx].z = 0;
-              clothPoints[centerIdx].oldx = 0;
-              clothPoints[centerIdx].oldy = cylinderTopY;
-              clothPoints[centerIdx].oldz = 0;
-            }
-          }
-
-          // Override floor if needed
-          if (simulationMode === "draped") {
-            if (formMode === "sphere") {
-              floorY = 150;
-            } else if (formMode === "cylinder") {
-              floorY = cylinderBottomY;
-            }
-          } else {
-            floorY = 150;
-          }
-
-          createSubPointsAndConstraints();
-          
-          // Update performance indicator
-          if (showPerformanceMetrics) {
-            select('#performanceIndicator').html(`Points: ${clothPoints.length} | Constraints: ${clothConstraints.length}`);
-          }
-        } catch (error) {
-          console.error("Error setting up cloth:", error);
-          showError("Error creating cloth structure. Please try a lower resolution.");
-        }
-      }
-
-      function createClothPoints_Plane(startX, startY, startZ) {
-        for (let y = 0; y < rows; y++) {
-          grid[y] = [];
-          for (let x = 0; x < cols; x++) {
-            let px = startX + x * spacing;
-            let py = startY + y * spacing;
-            let pz = startZ;
-            let pinned = false;
-            if (pinningMode === "top") {
-              pinned = (y === 0);
-            } else if (pinningMode === "corners") {
-              pinned = (
-                (x === 0 && y === 0) ||
-                (x === cols-1 && y === 0) ||
-                (x === 0 && y === rows-1) ||
-                (x === cols-1 && y === rows-1)
-              );
-            }
-            clothPoints.push({
-              x: px, y: py, z: pz,
-              oldx: px, oldy: py, oldz: pz,
-              pinned: pinned
-            });
-            grid[y][x] = clothPoints.length - 1;
-          }
-        }
-      }
-
-      function createClothPoints_Draped(startX, fixedY, startZ) {
-        for (let rz = 0; rz < rows; rz++) {
-          grid[rz] = [];
-          for (let cx = 0; cx < cols; cx++) {
-            let px = startX + cx * spacing;
-            let py = fixedY;
-            let pz = startZ + rz * spacing;
-            clothPoints.push({
-              x: px, y: py, z: pz,
-              oldx: px, oldy: py, oldz: pz,
-              pinned: false
-            });
-            grid[rz][cx] = clothPoints.length - 1;
-          }
-        }
-      }
-
-      function createSubPointsAndConstraints() {
-        // Optimize for lower quality
-        const createDetailedMesh = simulationQuality !== "low";
-        
-        if (createDetailedMesh) {
-          // Create horizontal midpoints
-          horizontal = [];
-          for (let y = 0; y < rows; y++) {
-            horizontal[y] = [];
-            for (let x = 0; x < cols - 1; x++) {
-              let idxA = grid[y][x];
-              let idxB = grid[y][x+1];
-              let A = clothPoints[idxA];
-              let B = clothPoints[idxB];
-              let mx = (A.x + B.x) * 0.5;
-              let my = (A.y + B.y) * 0.5;
-              let mz = (A.z + B.z) * 0.5;
-              clothPoints.push({
-                x: mx, y: my, z: mz,
-                oldx: mx, oldy: my, oldz: mz,
-                pinned: false
-              });
-              horizontal[y][x] = clothPoints.length - 1;
-            }
-          }
-          
-          // Create vertical midpoints
-          vertical = [];
-          for (let y = 0; y < rows - 1; y++) {
-            vertical[y] = [];
-            for (let x = 0; x < cols; x++) {
-              let idxA = grid[y][x];
-              let idxB = grid[y+1][x];
-              let A = clothPoints[idxA];
-              let B = clothPoints[idxB];
-              let mx = (A.x + B.x) * 0.5;
-              let my = (A.y + B.y) * 0.5;
-              let mz = (A.z + B.z) * 0.5;
-              clothPoints.push({
-                x: mx, y: my, z: mz,
-                oldx: mx, oldy: my, oldz: mz,
-                pinned: false
-              });
-              vertical[y][x] = clothPoints.length - 1;
-            }
-          }
-          
-          // Create center points
-          centers = [];
-          cellRestArea = [];
-          for (let y = 0; y < rows - 1; y++) {
-            centers[y] = [];
-            cellRestArea[y] = [];
-            for (let x = 0; x < cols - 1; x++) {
-              let idxA = grid[y][x];
-              let idxB = grid[y][x+1];
-              let idxC = grid[y+1][x];
-              let idxD = grid[y+1][x+1];
-              let A = clothPoints[idxA];
-              let B = clothPoints[idxB];
-              let C = clothPoints[idxC];
-              let D = clothPoints[idxD];
-              let mx = (A.x + B.x + C.x + D.x) * 0.25;
-              let my = (A.y + B.y + C.y + D.y) * 0.25;
-              let mz = (A.z + B.z + C.z + D.z) * 0.25;
-              clothPoints.push({
-                x: mx, y: my, z: mz,
+z: mz,
                 oldx: mx, oldy: my, oldz: mz,
                 pinned: false
               });
               centers[y][x] = clothPoints.length - 1;
-              let restArea = computeQuadArea(A, B, C, D);
-              cellRestArea[y][x] = restArea;
-            }
-          }
-        } else {
-          // For low quality, just compute cell areas for stress visualization
-          cellRestArea = [];
-          for (let y = 0; y < rows - 1; y++) {
-            cellRestArea[y] = [];
-            for (let x = 0; x < cols - 1; x++) {
-              let idxA = grid[y][x];
-              let idxB = grid[y][x+1];
-              let idxC = grid[y+1][x];
-              let idxD = grid[y+1][x+1];
-              let A = clothPoints[idxA];
-              let B = clothPoints[idxB];
-              let C = clothPoints[idxC];
-              let D = clothPoints[idxD];
-              let restArea = computeQuadArea(A, B, C, D);
-              cellRestArea[y][x] = restArea;
             }
           }
         }
@@ -2219,7 +32,7 @@
           let cx = uy * vz - uz * vy;
           let cy = uz * vx - ux * vz;
           let cz = ux * vy - uy * vx;
-          return 0.5 * sqrt(cx*cx + cy*cy + cz*cz);
+          return 0.5 * Math.sqrt(cx*cx + cy*cy + cz*cz);
         } catch (error) {
           console.error("Error computing triangle area:", error);
           return 0.5; // Return a default value to prevent further errors
@@ -2231,14 +44,18 @@
           // Structural
           for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
+              if (!isValidGridPoint(y, x)) continue;
+              
               let idx = grid[y][x];
-              if (x < cols - 1) {
+              
+              if (x < cols - 1 && isValidGridPoint(y, x+1)) {
                 addConstraint(idx, grid[y][x+1],
                   spacing * (stretchOn ? stretchFactor : BASE_STRETCH),
                   STRUCTURAL
                 );
               }
-              if (y < rows - 1) {
+              
+              if (y < rows - 1 && isValidGridPoint(y+1, x)) {
                 addConstraint(idx, grid[y+1][x],
                   spacing * (stretchOn ? stretchFactor : BASE_STRETCH),
                   STRUCTURAL
@@ -2251,14 +68,19 @@
           const bendingStep = simulationQuality === "low" ? 2 : 1;
           for (let y = 0; y < rows; y += bendingStep) {
             for (let x = 0; x < cols - 2; x += bendingStep) {
+              if (!isValidGridPoint(y, x) || !isValidGridPoint(y, x+2)) continue;
+              
               addConstraint(grid[y][x], grid[y][x+2],
                 spacing * 2 * (bendingOn ? bendingFactor : BASE_BENDING),
                 BENDING
               );
             }
           }
+          
           for (let y = 0; y < rows - 2; y += bendingStep) {
             for (let x = 0; x < cols; x += bendingStep) {
+              if (!isValidGridPoint(y, x) || !isValidGridPoint(y+2, x)) continue;
+              
               addConstraint(grid[y][x], grid[y+2][x],
                 spacing * 2 * (bendingOn ? bendingFactor : BASE_BENDING),
                 BENDING
@@ -2269,16 +91,21 @@
           // Shear
           for (let y = 0; y < rows - 1; y++) {
             for (let x = 0; x < cols - 1; x++) {
+              if (!isValidGridPoint(y, x) || !isValidGridPoint(y, x+1) || 
+                  !isValidGridPoint(y+1, x) || !isValidGridPoint(y+1, x+1)) continue;
+              
               let idxA = grid[y][x];
               let idxB = grid[y][x+1];
               let idxC = grid[y+1][x];
               let idxD = grid[y+1][x+1];
+              
               addConstraint(idxA, idxD,
-                sqrt(2) * spacing * (shearOn ? shearFactor : BASE_SHEAR),
+                Math.sqrt(2) * spacing * (shearOn ? shearFactor : BASE_SHEAR),
                 SHEAR
               );
+              
               addConstraint(idxB, idxC,
-                sqrt(2) * spacing * (shearOn ? shearFactor : BASE_SHEAR),
+                Math.sqrt(2) * spacing * (shearOn ? shearFactor : BASE_SHEAR),
                 SHEAR
               );
             }
@@ -2289,6 +116,14 @@
             // Skip this in low quality
             for (let y = 0; y < rows - 1; y++) {
               for (let x = 0; x < cols - 1; x++) {
+                if (!isValidGridPoint(y, x) || !isValidGridPoint(y, x+1) || 
+                    !isValidGridPoint(y+1, x) || !isValidGridPoint(y+1, x+1)) continue;
+                
+                if (!horizontal[y] || !horizontal[y][x] || 
+                    !horizontal[y+1] || !horizontal[y+1][x] ||
+                    !vertical[y] || !vertical[y][x] || 
+                    !vertical[y][x+1] || !centers[y] || !centers[y][x]) continue;
+                
                 let A = grid[y][x];
                 let B = grid[y][x+1];
                 let C = grid[y+1][x];
@@ -2298,6 +133,7 @@
                 let G = vertical[y][x];
                 let H = vertical[y][x+1];
                 let I = centers[y][x];
+                
                 addTriConstraints(A, E, I);
                 addTriConstraints(A, G, I);
                 addTriConstraints(B, E, I);
@@ -2317,9 +153,14 @@
 
       function addTriConstraints(i1, i2, i3) {
         try {
+          if (!clothPoints[i1] || !clothPoints[i2] || !clothPoints[i3]) return;
+          
           let dist1 = distBetween(i1, i2);
           let dist2 = distBetween(i2, i3);
           let dist3 = distBetween(i3, i1);
+          
+          if (dist1 <= 0 || dist2 <= 0 || dist3 <= 0) return;
+          
           addConstraint(i1, i2, dist1, STRUCTURAL);
           addConstraint(i2, i3, dist2, STRUCTURAL);
           addConstraint(i3, i1, dist3, STRUCTURAL);
@@ -2330,6 +171,8 @@
 
       function addConstraint(i, j, len, type) {
         try {
+          if (i === undefined || j === undefined || i === j || len <= 0) return;
+          
           let a = Math.min(i, j);
           let b = Math.max(i, j);
           
@@ -2357,7 +200,7 @@
           let dx = p2.x - p1.x;
           let dy = p2.y - p1.y;
           let dz = p2.z - p1.z;
-          return sqrt(dx*dx + dy*dy + dz*dz);
+          return Math.sqrt(dx*dx + dy*dy + dz*dz);
         } catch (error) {
           console.error("Error calculating distance:", error);
           return spacing; // Return a default value
@@ -2371,7 +214,7 @@
           // Skip some points in low quality mode
           const step = simulationQuality === "low" ? 2 : 1;
           
-          // Process points
+          // Process points - apply forces and integration
           for (let i = 0; i < clothPoints.length; i += step) {
             let p = clothPoints[i];
             if (!p || p.pinned) continue;
@@ -2383,7 +226,8 @@
             p.oldy = p.y;
             p.oldz = p.z;
 
-            let sinVal = sin(frameCount * freq);
+            // Precompute wind effect based on frame
+            let sinVal = Math.sin(frameCount * freq);
             let effectiveWindX = windXOn ? windBuffer * windX * sinVal : BASE_WINDX;
             let effectiveWindY = windYOn ? windBuffer * windY * sinVal : BASE_WINDY;
             let effectiveWindZ = windZOn ? windBuffer * windZ * sinVal : BASE_WINDZ;
@@ -2401,46 +245,69 @@
           // For low quality, reduce iterations
           if (simulationQuality === "low") effIter = Math.max(1, Math.floor(effIter / 2));
           
-          for (let i = 0; i < effIter; i++) {
-            // Process constraints in chunks for better performance
-            const chunkSize = 1000;
-            for (let start = 0; start < clothConstraints.length; start += chunkSize) {
-              const end = Math.min(start + chunkSize, clothConstraints.length);
-              for (let j = start; j < end; j++) {
+          // Fast constraint solver that processes constraints in batches
+          for (let iter = 0; iter < effIter; iter++) {
+            // Process constraints in smaller chunks for better performance
+            // and to avoid blocking the UI thread for too long
+            const batchSize = 500; // Process 500 constraints at a time
+            
+            for (let batchStart = 0; batchStart < clothConstraints.length; batchStart += batchSize) {
+              const batchEnd = Math.min(batchStart + batchSize, clothConstraints.length);
+              
+              for (let j = batchStart; j < batchEnd; j++) {
+                if (j >= clothConstraints.length) continue;
+                
                 let c = clothConstraints[j];
+                if (!c) continue;
+                
                 let p1 = clothPoints[c.p1];
                 let p2 = clothPoints[c.p2];
                 
                 if (!p1 || !p2) continue;
                 
+                // Skip if both points are pinned (no need to calculate)
+                if (p1.pinned && p2.pinned) continue;
+                
                 let dx = p2.x - p1.x;
                 let dy = p2.y - p1.y;
                 let dz = p2.z - p1.z;
-                let distVal = sqrt(dx*dx + dy*dy + dz*dz);
+                let distSq = dx*dx + dy*dy + dz*dz;
                 
-                if (distVal > 0.0001) { // Avoid division by zero
+                // Early skip if points are at almost exactly the right distance
+                const epsilon = 0.000001;
+                const targetDistSq = c.length * c.length;
+                if (Math.abs(distSq - targetDistSq) < epsilon) continue;
+                
+                let distVal = Math.sqrt(distSq);
+                
+                // Avoid division by zero
+                if (distVal > 0.0001) {
                   let diff = (distVal - c.length) / distVal;
-                  let offsetX = dx * 0.5 * diff;
-                  let offsetY = dy * 0.5 * diff;
-                  let offsetZ = dz * 0.5 * diff;
                   
-                  if (!p1.pinned) {
-                    p1.x += offsetX;
-                    p1.y += offsetY;
-                    p1.z += offsetZ;
-                  }
-                  
-                  if (!p2.pinned) {
-                    p2.x -= offsetX;
-                    p2.y -= offsetY;
-                    p2.z -= offsetZ;
+                  // Apply constraint based on whether points are pinned
+                  if (!p1.pinned && !p2.pinned) {
+                    p1.x += dx * 0.5 * diff;
+                    p1.y += dy * 0.5 * diff;
+                    p1.z += dz * 0.5 * diff;
+                    
+                    p2.x -= dx * 0.5 * diff;
+                    p2.y -= dy * 0.5 * diff;
+                    p2.z -= dz * 0.5 * diff;
+                  } else if (!p1.pinned) {
+                    p1.x += dx * diff;
+                    p1.y += dy * diff;
+                    p1.z += dz * diff;
+                  } else if (!p2.pinned) {
+                    p2.x -= dx * diff;
+                    p2.y -= dy * diff;
+                    p2.z -= dz * diff;
                   }
                 }
               }
             }
           }
 
-          // Handle collisions
+          // Handle collisions (optimized)
           if (simulationQuality !== "low") {
             doSelfCollision();
           }
@@ -2463,9 +330,7 @@
           // Skip self-collision for low quality mode
           if (simulationQuality === "low") return;
           
-          let threshold = spacing * 0.5;
-          
-          // Use spatial partitioning for efficiency (simple grid-based approach)
+          const threshold = spacing * 0.5;
           const gridSize = threshold * 2;
           const grid = new Map();
           
@@ -2493,14 +358,14 @@
           for (let i = 0; i < clothPoints.length; i++) {
             let p1 = clothPoints[i];
             
-            // Skip invalid points
-            if (!p1) continue;
+            // Skip invalid or pinned points
+            if (!p1 || p1.pinned) continue;
             
             const gx = Math.floor(p1.x / gridSize);
             const gy = Math.floor(p1.y / gridSize);
             const gz = Math.floor(p1.z / gridSize);
             
-            // Check neighboring cells
+            // Check current and neighboring cells
             for (let dx = -1; dx <= 1; dx++) {
               for (let dy = -1; dy <= 1; dy++) {
                 for (let dz = -1; dz <= 1; dz++) {
@@ -2516,36 +381,26 @@
                     
                     let p2 = clothPoints[j];
                     
-                    // Skip invalid points
-                    if (!p2) continue;
+                    // Skip invalid or pinned points
+                    if (!p2 || p2.pinned) continue;
                     
                     let dx = p2.x - p1.x;
                     let dy = p2.y - p1.y;
                     let dz = p2.z - p1.z;
-                    let d = sqrt(dx*dx + dy*dy + dz*dz);
+                    let d = Math.sqrt(dx*dx + dy*dy + dz*dz);
                     
-                    if (d < threshold && d > 0) {
+                    if (d < threshold && d > 0.0001) { // Avoid very small distances
                       let overlap = threshold - d;
                       let nx = dx / d;
                       let ny = dy / d;
                       let nz = dz / d;
                       
-                      if (!p1.pinned && !p2.pinned) {
-                        p1.x -= nx * overlap * 0.5;
-                        p1.y -= ny * overlap * 0.5;
-                        p1.z -= nz * overlap * 0.5;
-                        p2.x += nx * overlap * 0.5;
-                        p2.y += ny * overlap * 0.5;
-                        p2.z += nz * overlap * 0.5;
-                      } else if (!p1.pinned && p2.pinned) {
-                        p1.x -= nx * overlap;
-                        p1.y -= ny * overlap;
-                        p1.z -= nz * overlap;
-                      } else if (p1.pinned && !p2.pinned) {
-                        p2.x += nx * overlap;
-                        p2.y += ny * overlap;
-                        p2.z += nz * overlap;
-                      }
+                      p1.x -= nx * overlap * 0.5;
+                      p1.y -= ny * overlap * 0.5;
+                      p1.z -= nz * overlap * 0.5;
+                      p2.x += nx * overlap * 0.5;
+                      p2.y += ny * overlap * 0.5;
+                      p2.z += nz * overlap * 0.5;
                     }
                   }
                 }
@@ -2557,65 +412,144 @@
         }
       }
 
+      // Fixed sphere collision function
       function doSphereCollision() {
         try {
           const collisionFriction = 0.5;
           
-          for (let p of clothPoints) {
+          for (let i = 0; i < clothPoints.length; i++) {
+            let p = clothPoints[i];
+            
             // Skip invalid or pinned points
             if (!p || p.pinned) continue;
             
             let dx = p.x - sphereCentre.x;
             let dy = p.y - sphereCentre.y;
             let dz = p.z - sphereCentre.z;
-            let distVal = sqrt(dx*dx + dy*dy + dz*dz);
+            let distSq = dx*dx + dy*dy + dz*dz;
+            let radiusSq = sphereRadius * sphereRadius;
             
-            if (distVal < sphereRadius) {
-              let overlap = sphereRadius - distVal;
+            // Early optimization - check squared distance first
+            if (distSq >= radiusSq) continue;
+            
+            let distVal = Math.sqrt(distSq);
+            
+            // Avoid division by zero
+            if (distVal < 0.0001) {
+              // Point is very close to center, push it out in a random direction
+              let angle = Math.random() * Math.PI * 2;
+              dx = Math.cos(angle);
+              dy = Math.sin(angle);
+              dz = Math.random() - 0.5;
               
-              // Avoid division by zero
-              if (distVal > 0.0001) {
-                let nx = dx / distVal;
-                let ny = dy / distVal;
-                let nz = dz / distVal;
-                
-                p.x += nx * overlap;
-                p.y += ny * overlap;
-                p.z += nz * overlap;
-                p.oldx = p.x - collisionFriction * (p.x - p.oldx);
-                p.oldy = p.y - collisionFriction * (p.y - p.oldy);
-                p.oldz = p.z - collisionFriction * (p.z - p.oldz);
-              }
+              // Normalize
+              let len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+              dx /= len;
+              dy /= len;
+              dz /= len;
+              
+              distVal = 0.0001;
             }
+            
+            let overlap = sphereRadius - distVal;
+            let nx = dx / distVal;
+            let ny = dy / distVal;
+            let nz = dz / distVal;
+            
+            // Push point to surface of sphere
+            p.x += nx * overlap * (1 + 0.01); // Add small buffer to prevent flicker
+            p.y += ny * overlap * (1 + 0.01);
+            p.z += nz * overlap * (1 + 0.01);
+            
+            // Apply friction to reduce sliding
+            p.oldx = p.x - collisionFriction * (p.x - p.oldx);
+            p.oldy = p.y - collisionFriction * (p.y - p.oldy);
+            p.oldz = p.z - collisionFriction * (p.z - p.oldz);
           }
         } catch (error) {
           console.error("Error in sphere collision:", error);
         }
       }
 
+      // Fixed cylinder collision function
       function doCylinderCollision() {
         try {
           const collisionFriction = 0.5;
           
-          for (let p of clothPoints) {
+          for (let i = 0; i < clothPoints.length; i++) {
+            let p = clothPoints[i];
+            
             // Skip invalid or pinned points
             if (!p || p.pinned) continue;
             
+            // Only check points that are within the cylinder's height range
             if (p.y > cylinderTopY && p.y < cylinderBottomY) {
-              let r = sqrt(p.x*p.x + p.z*p.z);
+              // Calculate distance to cylinder axis (which is along Y)
+              let dx = p.x;
+              let dz = p.z;
+              let r = Math.sqrt(dx*dx + dz*dz);
               
               if (r < cylRadius) {
                 let overlap = cylRadius - r;
                 
                 // Avoid division by zero
-                if (r > 0.0001) {
-                  let nx = p.x / r;
-                  let nz = p.z / r;
-                  
-                  p.x += nx * overlap;
-                  p.z += nz * overlap;
-                  p.oldx = p.x - collisionFriction * (p.x - p.oldx);
-                  p.oldz = p.z - collisionFriction * (p.z - p.oldz);
+                if (r < 0.0001) {
+                  // Point is very close to axis, push it out in a random XZ direction
+                  let angle = Math.random() * Math.PI * 2;
+                  dx = Math.cos(angle);
+                  dz = Math.sin(angle);
+                  r = 0.0001;
+                } else {
+                  dx /= r;
+                  dz /= r;
+                }
+                
+                // Push point to surface of cylinder
+                p.x += dx * overlap * (1 + 0.01); // Add small buffer to prevent flicker
+                p.z += dz * overlap * (1 + 0.01);
+                
+                // Apply friction to reduce sliding
+                p.oldx = p.x - collisionFriction * (p.x - p.oldx);
+                p.oldz = p.z - collisionFriction * (p.z - p.oldz);
+              }
+            }
+            
+            // Also check cylinder caps (top and bottom circles)
+            if (p.y < cylinderTopY && p.y > cylinderTopY - cylRadius) {
+              // Distance to top cap center
+              let dx = p.x;
+              let dy = p.y - cylinderTopY;
+              let dz = p.z;
+              let dxz = Math.sqrt(dx*dx + dz*dz);
+              
+              // If inside the top cap and below the sphere created by the cap edge
+              if (dxz < cylRadius) {
+                let capY = cylinderTopY;
+                
+                // Check if point is inside the cap's spherical region
+                let distToEdge = Math.sqrt(Math.pow(cylRadius - dxz, 2) + dy*dy);
+                if (distToEdge < cylRadius) {
+                  // Push point to cap surface
+                  p.y = cylinderTopY;
+                  p.oldy = p.y - collisionFriction * (p.y - p.oldy);
+                }
+              }
+            }
+            
+            // Check bottom cap similarly
+            if (p.y > cylinderBottomY && p.y < cylinderBottomY + cylRadius) {
+              let dx = p.x;
+              let dy = p.y - cylinderBottomY;
+              let dz = p.z;
+              let dxz = Math.sqrt(dx*dx + dz*dz);
+              
+              if (dxz < cylRadius) {
+                let capY = cylinderBottomY;
+                
+                let distToEdge = Math.sqrt(Math.pow(cylRadius - dxz, 2) + dy*dy);
+                if (distToEdge < cylRadius) {
+                  p.y = cylinderBottomY;
+                  p.oldy = p.y - collisionFriction * (p.y - p.oldy);
                 }
               }
             }
@@ -2625,21 +559,106 @@
         }
       }
 
+      // Improved floor collision
       function doFloorCollision() {
         try {
           const collisionFriction = 0.5;
           
-          for (let p of clothPoints) {
+          for (let i = 0; i < clothPoints.length; i++) {
+            let p = clothPoints[i];
+            
             // Skip invalid or pinned points
             if (!p || p.pinned) continue;
             
             if (p.y > floorY) {
+              // Store vertical velocity for friction calculation
+              let vy = p.y - p.oldy;
+              
+              // Collide with floor
               p.y = floorY;
-              p.oldy = p.y - collisionFriction * (p.y - p.oldy);
+              
+              // Apply friction scaled by impact velocity
+              let friction = Math.min(collisionFriction * (1 + Math.abs(vy) * 2), 0.95);
+              
+              // Apply horizontal friction based on impact velocity
+              p.oldx = p.x - (p.x - p.oldx) * friction;
+              p.oldz = p.z - (p.z - p.oldz) * friction;
+              
+              // Apply slight bounce if velocity was high
+              if (vy > 1.0) {
+                p.oldy = p.y + vy * -0.2; // 20% bounce
+              } else {
+                p.oldy = p.y;
+              }
             }
           }
         } catch (error) {
           console.error("Error in floor collision:", error);
+        }
+      }
+
+      /* Improved Touch Event Handlers */
+      function setupTouchHandlers() {
+        try {
+          const canvas = document.getElementById('defaultCanvas0');
+          if (!canvas) {
+            console.error("Canvas not found for touch setup");
+            return;
+          }
+          
+          // Touch start event
+          canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 0) {
+              e.preventDefault(); // Prevent scrolling
+              
+              // Convert touch coordinates to canvas coordinates
+              const canvasRect = canvas.getBoundingClientRect();
+              const touchX = e.touches[0].clientX - canvasRect.left;
+              const touchY = e.touches[0].clientY - canvasRect.top;
+              
+              // Update p5.js mouseX and mouseY
+              mouseX = touchX;
+              mouseY = touchY;
+              
+              // Call the mousePressed function
+              mousePressed();
+            }
+          }, { passive: false });
+          
+          // Touch move event
+          canvas.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 0) {
+              e.preventDefault(); // Prevent scrolling when interacting with cloth
+              
+              // Convert touch coordinates to canvas coordinates
+              const canvasRect = canvas.getBoundingClientRect();
+              const touchX = e.touches[0].clientX - canvasRect.left;
+              const touchY = e.touches[0].clientY - canvasRect.top;
+              
+              // Update p5.js mouseX and mouseY
+              mouseX = touchX;
+              mouseY = touchY;
+              
+              // Call the mouseDragged function
+              mouseDragged();
+            }
+          }, { passive: false });
+          
+          // Touch end event
+          canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            mouseReleased();
+          }, { passive: false });
+          
+          // Touch cancel event
+          canvas.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            mouseReleased();
+          }, { passive: false });
+          
+          console.log("Touch handlers initialized successfully");
+        } catch (error) {
+          console.error("Error setting up touch handlers:", error);
         }
       }
 
@@ -2805,18 +824,131 @@
             // Start recording
             select('#recordBtn').html('Stop Recording');
             recordedFrames = [];
+            
+            // Record initial state
             recordClothState();
           } else {
             // Stop recording
             select('#recordBtn').html('Start Recording');
             select('#playBtn').removeAttribute('disabled');
+            
+            // Show stats about recording
+            const memory = estimateMemoryUsage();
+            console.log(`Recording complete. Frames: ${recordedFrames.length}, Estimated memory: ${memory.toFixed(2)} MB`);
           }
         } catch (error) {
           console.error("Error toggling recording:", error);
           showError("Error with recording system. Please try again.");
         }
       }
-      
+
+      function recordClothState() {
+        try {
+          if (!recordingActive) return;
+          
+          // Create compressed representation of cloth points
+          let frameState = [];
+          
+          // Sampling frequency - record fewer points for large cloth
+          // This is a key optimization to reduce memory usage
+          const step = clothPoints.length > 1000 ? 3 : (clothPoints.length > 500 ? 2 : 1);
+          
+          // For very large cloth, sample key structural points
+          const samplingStrategy = (clothPoints.length > 2000) ? "structural" : "uniform";
+          
+          if (samplingStrategy === "uniform") {
+            // Simple uniform sampling
+            for (let i = 0; i < clothPoints.length; i += step) {
+              let p = clothPoints[i];
+              
+              if (p) {
+                frameState.push({
+                  index: i,
+                  x: p.x,
+                  y: p.y,
+                  z: p.z,
+                  oldx: p.oldx,
+                  oldy: p.oldy,
+                  oldz: p.oldz,
+                  pinned: p.pinned
+                });
+              }
+            }
+          } else {
+            // Structural sampling - prioritize grid points over internal details
+            for (let y = 0; y < rows; y += step) {
+              for (let x = 0; x < cols; x += step) {
+                if (isValidGridPoint(y, x)) {
+                  const i = grid[y][x];
+                  let p = clothPoints[i];
+                  
+                  if (p) {
+                    frameState.push({
+                      index: i,
+                      x: p.x,
+                      y: p.y,
+                      z: p.z,
+                      oldx: p.oldx,
+                      oldy: p.oldy,
+                      oldz: p.oldz,
+                      pinned: p.pinned
+                    });
+                  }
+                }
+              }
+            }
+          }
+          
+          recordedFrames.push(frameState);
+          
+          // Memory management - limit to reasonable number of frames
+          // 200 frames = 10 seconds at 20fps
+          const maxFrames = 200;
+          if (recordedFrames.length > maxFrames) {
+            // Remove oldest frame
+            recordedFrames.shift();
+          }
+          
+          // Check recording size
+          if (recordedFrames.length % 50 === 0) {
+            const memory = estimateMemoryUsage();
+            if (memory > 50) {
+              // Memory usage is too high, increase step size
+              step++;
+              console.log(`Memory usage high (${memory.toFixed(2)} MB). Reducing recording quality.`);
+            }
+          }
+          
+          // Schedule next recording
+          setTimeout(recordClothState, 50); // 20 fps
+        } catch (error) {
+          console.error("Error recording state:", error);
+          recordingActive = false;
+          select('#recordBtn').html('Start Recording');
+          showError("Recording error: " + error.message);
+        }
+      }
+
+      // Estimate memory usage of recorded frames
+      function estimateMemoryUsage() {
+        try {
+          // Each point record uses approximately 8 bytes per number (6 coordinates + index)
+          // Plus object overhead
+          const bytesPerPoint = 7 * 8 + 32; // 7 numbers + object overhead
+          
+          let totalPoints = 0;
+          for (let frame of recordedFrames) {
+            totalPoints += frame.length;
+          }
+          
+          // Convert to MB
+          return (totalPoints * bytesPerPoint) / (1024 * 1024);
+        } catch (error) {
+          console.error("Error estimating memory usage:", error);
+          return 0;
+        }
+      }
+
       function togglePlayback() {
         try {
           playbackActive = !playbackActive;
@@ -2858,50 +990,23 @@
         }
       }
       
-      function recordClothState() {
-        try {
-          if (!recordingActive) return;
-          
-          // Create deep copy of cloth points
-          let frameState = [];
-          
-          // For large cloth structures, compress data by sampling fewer points
-          const step = clothPoints.length > 1000 ? 2 : 1;
-          
-          for (let i = 0; i < clothPoints.length; i += step) {
-            let p = clothPoints[i];
-            
-            if (p) {
-              frameState.push({
-                index: i,
-                x: p.x,
-                y: p.y,
-                z: p.z,
-                oldx: p.oldx,
-                oldy: p.oldy,
-                oldz: p.oldz,
-                pinned: p.pinned
-              });
-            }
-          }
-          
-          recordedFrames.push(frameState);
-          
-          // Limit to reasonable number of frames (10 seconds at 20fps)
-          if (recordedFrames.length > 200) {
-            recordedFrames.shift();
-          }
-          
-          // Schedule next recording
-          setTimeout(recordClothState, 50); // 20 fps
-        } catch (error) {
-          console.error("Error recording state:", error);
-        }
-      }
-      
+      // Improved playback with interpolation
       function restoreClothState(frameState) {
         try {
-          // For sparse frame states (where not all points are stored)
+          // Reset all point positions to their last positions first
+          // This helps with points that aren't in the sparse recording
+          for (let i = 0; i < clothPoints.length; i++) {
+            let p = clothPoints[i];
+            if (!p || p.pinned) continue;
+            
+            // Only reset position, not previous position
+            // This creates smoother transitions
+            p.x = p.oldx;
+            p.y = p.oldy;
+            p.z = p.oldz;
+          }
+          
+          // Apply recorded points
           for (let i = 0; i < frameState.length; i++) {
             let state = frameState[i];
             let index = state.index;
@@ -2917,11 +1022,10 @@
             }
           }
           
-          // Interpolate missing points for smooth playback if using sparse recording
-          if (frameState.length < clothPoints.length) {
-            for (let i = 0; i < 2; i++) {
-              smoothClothState();
-            }
+          // Interpolate missing points by running constraint satisfaction
+          // This creates a more accurate reconstruction of the full cloth state
+          for (let iter = 0; iter < 3; iter++) {
+            smoothClothState();
           }
         } catch (error) {
           console.error("Error restoring state:", error);
@@ -2934,6 +1038,8 @@
           // Only smooth horizontal/vertical neighbors in grid
           for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
+              if (!isValidGridPoint(y, x)) continue;
+              
               let idx = grid[y][x];
               let p = clothPoints[idx];
               
@@ -2943,25 +1049,25 @@
               let neighbors = [];
               
               // Check left
-              if (x > 0) {
+              if (x > 0 && isValidGridPoint(y, x-1)) {
                 let left = clothPoints[grid[y][x-1]];
                 if (left) neighbors.push(left);
               }
               
               // Check right
-              if (x < cols - 1) {
+              if (x < cols - 1 && isValidGridPoint(y, x+1)) {
                 let right = clothPoints[grid[y][x+1]];
                 if (right) neighbors.push(right);
               }
               
               // Check top
-              if (y > 0) {
+              if (y > 0 && isValidGridPoint(y-1, x)) {
                 let top = clothPoints[grid[y-1][x]];
                 if (top) neighbors.push(top);
               }
               
               // Check bottom
-              if (y < rows - 1) {
+              if (y < rows - 1 && isValidGridPoint(y+1, x)) {
                 let bottom = clothPoints[grid[y+1][x]];
                 if (bottom) neighbors.push(bottom);
               }
@@ -3091,14 +1197,25 @@
       }
       
       /* Animation presets */
+      // Clear any existing animation intervals
+      let activeAnimationInterval = null;
+
       function applyAnimationPreset(preset) {
         try {
+          // Stop any existing animation
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
+          
           // Reset cloth first
           setupCloth();
           
           // Make sure simulation is running
           simulationRunning = true;
+          select('#playPauseBtn').html('Pause Simulation');
           
+          // Apply the requested animation preset
           switch (preset) {
             case 'breeze':
               applyBreezePreset();
@@ -3115,13 +1232,30 @@
             case 'gravity':
               applyGravityPreset();
               break;
+            default:
+              console.warn("Unknown animation preset:", preset);
           }
+          
+          // Reset dropdown after a delay
+          setTimeout(() => {
+            try {
+              document.getElementById('animationPresetSelect').value = '';
+            } catch (e) {
+              console.error("Could not reset animation dropdown:", e);
+            }
+          }, 500);
         } catch (error) {
           console.error("Error applying animation preset:", error);
           showError("Error applying animation. Please try again.");
+          
+          // Cleanup any intervals in case of error
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
         }
       }
-      
+
       function applyBreezePreset() {
         try {
           // Set up gentle breeze animation
@@ -3129,29 +1263,39 @@
           setPinningMode("top");
           setDamping(true, 0.98);
           setGravity(true, 0.3);
+          setShadingMode("cloth");
           
           // Start with no wind
           setWind(true, 0, 0, 0);
           
-          // Gradually introduce gentle breeze
+          // Animation steps counter
           let step = 0;
-          let windInterval = setInterval(() => {
+          let maxSteps = 200;
+          
+          // Start animation interval
+          activeAnimationInterval = setInterval(() => {
             step++;
             
             // Oscillating gentle wind
-            let windStrength = 0.1 * sin(step * 0.1);
+            let windStrength = 0.1 * Math.sin(step * 0.1);
             setWind(true, windStrength, 0, windStrength * 0.5);
             
             // End animation after a while
-            if (step > 200) {
-              clearInterval(windInterval);
+            if (step >= maxSteps) {
+              clearInterval(activeAnimationInterval);
+              activeAnimationInterval = null;
             }
           }, 100);
         } catch (error) {
           console.error("Error in breeze preset:", error);
+          // Cleanup in case of error
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
         }
       }
-      
+
       function applyGustPreset() {
         try {
           // Set up for wind gust animation
@@ -3159,13 +1303,17 @@
           setPinningMode("top");
           setDamping(true, 0.97);
           setGravity(true, 0.3);
+          setShadingMode("cloth");
           
           // Start with no wind
           setWind(true, 0, 0, 0);
           
-          // Create wind gust sequence
+          // Animation steps counter
           let step = 0;
-          let gustInterval = setInterval(() => {
+          let maxSteps = 150;
+          
+          // Start animation interval
+          activeAnimationInterval = setInterval(() => {
             step++;
             
             if (step > 20 && step < 40) {
@@ -3185,15 +1333,21 @@
             }
             
             // End animation after a while
-            if (step > 150) {
-              clearInterval(gustInterval);
+            if (step >= maxSteps) {
+              clearInterval(activeAnimationInterval);
+              activeAnimationInterval = null;
             }
           }, 100);
         } catch (error) {
           console.error("Error in gust preset:", error);
+          // Cleanup in case of error
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
         }
       }
-      
+
       function applyDropPreset() {
         try {
           // Set up for cloth drop animation
@@ -3202,18 +1356,18 @@
           setDamping(true, 0.97);
           setGravity(false, 0);
           setWind(false, 0, 0, 0);
+          setShadingMode("cloth");
           
-          // Position cloth horizontally
-          let gravityInterval = setInterval(() => {
+          // Animate after a short delay
+          setTimeout(() => {
             // Turn on gravity after a delay
             setGravity(true, 0.4);
-            clearInterval(gravityInterval);
           }, 1000);
         } catch (error) {
           console.error("Error in drop preset:", error);
         }
       }
-      
+
       function applyMaterialTestPreset() {
         try {
           // Set up for material test
@@ -3222,40 +1376,54 @@
           setDamping(true, 0.97);
           setGravity(true, 0.4);
           setWind(false, 0, 0, 0);
+          setShadingMode("cloth");
           
-          // Sequence through different material properties
+          // Animation steps counter
           let step = 0;
-          let materialInterval = setInterval(() => {
+          let maxSteps = 170;
+          
+          // Start animation interval
+          activeAnimationInterval = setInterval(() => {
             step++;
             
             if (step === 10) {
               // Start with stiff material
               setStretch(true, 0.8);
               setBending(true, 1.2);
+              showError("Testing stiff material");
             } else if (step === 50) {
               // Change to medium material
               setStretch(true, 1.0);
               setBending(true, 1.0);
+              showError("Testing medium material");
             } else if (step === 90) {
               // Change to soft, flexible material
               setStretch(true, 1.2);
               setBending(true, 0.8);
+              showError("Testing soft material");
             } else if (step === 130) {
               // Change to very stretchy material
               setStretch(true, 1.5);
               setBending(true, 0.6);
+              showError("Testing stretchy material");
             }
             
             // End animation after a while
-            if (step > 170) {
-              clearInterval(materialInterval);
+            if (step >= maxSteps) {
+              clearInterval(activeAnimationInterval);
+              activeAnimationInterval = null;
             }
           }, 100);
         } catch (error) {
           console.error("Error in material test preset:", error);
+          // Cleanup in case of error
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
         }
       }
-      
+
       function applyGravityPreset() {
         try {
           // Set up for gravity increase animation
@@ -3264,25 +1432,36 @@
           setDamping(true, 0.97);
           setGravity(true, 0.1);
           setWind(false, 0, 0, 0);
+          setShadingMode("cloth");
           
-          // Gradually increase gravity
+          // Animation steps counter
           let step = 0;
-          let gravityInterval = setInterval(() => {
+          let maxSteps = 150;
+          
+          // Start animation interval
+          activeAnimationInterval = setInterval(() => {
             step++;
             
             if (step % 20 === 0 && step <= 100) {
               // Increase gravity in steps
               let gravityValue = map(step, 0, 100, 0.1, 1.0);
               setGravity(true, gravityValue);
+              showError(`Gravity: ${gravityValue.toFixed(2)}`);
             }
             
             // End animation after a while
-            if (step > 150) {
-              clearInterval(gravityInterval);
+            if (step >= maxSteps) {
+              clearInterval(activeAnimationInterval);
+              activeAnimationInterval = null;
             }
           }, 100);
         } catch (error) {
           console.error("Error in gravity preset:", error);
+          // Cleanup in case of error
+          if (activeAnimationInterval) {
+            clearInterval(activeAnimationInterval);
+            activeAnimationInterval = null;
+          }
         }
       }
       
@@ -3788,7 +1967,10 @@
           const constraintStep = Math.max(1, Math.floor(clothConstraints.length / 100));
           
           for (let i = 0; i < clothConstraints.length; i += constraintStep) {
+            if (i >= clothConstraints.length) continue;
             let c = clothConstraints[i];
+            if (!c) continue;
+            
             let p1 = clothPoints[c.p1];
             let p2 = clothPoints[c.p2];
             
@@ -3797,10 +1979,10 @@
             let dx = p2.x - p1.x;
             let dy = p2.y - p1.y;
             let dz = p2.z - p1.z;
-            let d = sqrt(dx*dx + dy*dy + dz*dz);
+            let d = Math.sqrt(dx*dx + dy*dy + dz*dz);
             
             if (d > 0 && c.length > 0) {
-              let strain = abs(d - c.length) / c.length;
+              let strain = Math.abs(d - c.length) / c.length;
               strainEnergy += strain * strain;
               sampleCount++;
             }
@@ -3832,8 +2014,8 @@
           for (let y = 0; y < rows - 1; y += rowStep) {
             for (let x = 0; x < cols - 1; x += colStep) {
               // Check if we have valid indices
-              if (!grid[y] || !grid[y][x] || !grid[y][x+1] || 
-                  !grid[y+1] || !grid[y+1][x] || !grid[y+1][x+1]) {
+              if (!isValidGridPoint(y, x) || !isValidGridPoint(y, x+1) || 
+                  !isValidGridPoint(y+1, x) || !isValidGridPoint(y+1, x+1)) {
                 continue;
               }
               
@@ -3862,8 +2044,8 @@
               let restArea = cellRestArea[y][x];
               
               if (restArea > 0) {
-                let diff = abs(currArea - restArea) / restArea;
-                maxStress = max(maxStress, diff);
+                let diff = Math.abs(currArea - restArea) / restArea;
+                maxStress = Math.max(maxStress, diff);
                 avgStress += diff;
                 stressCount++;
               }
@@ -3882,7 +2064,7 @@
           
           // Update force info
           let gravityForce = gravityOn ? (gravity * weight) : 0;
-          let windForce = sqrt(windX*windX + windY*windY + windZ*windZ);
+          let windForce = Math.sqrt(windX*windX + windY*windY + windZ*windZ);
           windForce = (windXOn || windYOn || windZOn) ? windForce : 0;
           
           let forceInfo = `<h3>Force Analysis</h3>
@@ -4142,39 +2324,7 @@
       }
       
       /* EVENT LISTENERS */
-      // Touch event handlers for mobile support
-      document.addEventListener('touchstart', function(e) {
-        mousePressed();
-      }, false);
-      
-      document.addEventListener('touchmove', function(e) {
-        // Update mouseX and mouseY from touch
-        if (e.touches.length > 0) {
-          const canvasRect = document.querySelector('#defaultCanvas0').getBoundingClientRect();
-          mouseX = e.touches[0].clientX - canvasRect.left;
-          mouseY = e.touches[0].clientY - canvasRect.top;
-          mouseDragged();
-        }
-        // Prevent scrolling when interacting with cloth
-        if (interactionMode === "drag" && dragPointIndex !== null) {
-          e.preventDefault();
-        }
-      }, { passive: false });
-      
-      document.addEventListener('touchend', function(e) {
-        mouseReleased();
-      }, false);
-      
-      // Performance monitoring toggle
-      window.addEventListener('keydown', function(e) {
-        if (e.key === 'p' || e.key === 'P') {
-          showPerformanceMetrics = !showPerformanceMetrics;
-          select('#performanceIndicator').style('display', showPerformanceMetrics ? 'block' : 'none');
-        }
-      });
-      
-      /* INITIALIZATION */
-      // Listen for window load to ensure everything is properly set up
+      // Window load event
       window.addEventListener('load', function() {
         try {
           // Handle loading screen
@@ -4204,6 +2354,14 @@
           }
         } catch (error) {
           console.error("Error in window load handler:", error);
+        }
+      });
+      
+      // Performance monitoring toggle
+      window.addEventListener('keydown', function(e) {
+        if (e.key === 'p' || e.key === 'P') {
+          showPerformanceMetrics = !showPerformanceMetrics;
+          select('#performanceIndicator').style('display', showPerformanceMetrics ? 'block' : 'none');
         }
       });
     </script>
